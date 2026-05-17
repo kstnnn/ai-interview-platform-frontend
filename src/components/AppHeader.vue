@@ -19,11 +19,17 @@
 
       <div class="flex items-center gap-2">
         <LanguageSwitcher />
-        <RouterLink to="/user">
-          <BaseButton variant="outline" size="sm">{{ t('nav.practice') }}</BaseButton>
+        <RouterLink v-if="!isAuthenticated" to="/sign-in">
+          <BaseButton variant="outline" size="sm">Sign in</BaseButton>
         </RouterLink>
-        <RouterLink to="/business">
-          <BaseButton size="sm">{{ t('nav.business') }}</BaseButton>
+        <RouterLink v-if="!isAuthenticated" to="/sign-up">
+          <BaseButton size="sm">Sign up</BaseButton>
+        </RouterLink>
+        <RouterLink v-if="isAuthenticated" to="/user" class="hidden text-sm font-semibold text-foreground sm:inline-flex">
+          {{ displayName }}
+        </RouterLink>
+        <RouterLink v-if="isAuthenticated" to="/auth/logout">
+          <BaseButton variant="outline" size="sm">Sign out</BaseButton>
         </RouterLink>
       </div>
     </div>
@@ -35,7 +41,11 @@ import { RouterLink } from 'vue-router'
 import { ClipboardCheck } from 'lucide-vue-next'
 import BaseButton from '@/components/BaseButton.vue'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
+import { useAuth } from '@/composables/useAuth'
 import { useI18n } from '@/i18n'
 
 const { t } = useI18n()
+const { displayName, initialize, isAuthenticated } = useAuth()
+
+void initialize()
 </script>

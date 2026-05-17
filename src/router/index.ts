@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { getCurrentUser, isZitadelConfigured } from '@/auth/zitadel'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -9,14 +10,41 @@ const router = createRouter({
       component: () => import('@/views/HomeView.vue'),
     },
     {
+      path: '/sign-in',
+      name: 'sign-in',
+      component: () => import('@/views/SignInView.vue'),
+    },
+    {
+      path: '/sign-up',
+      name: 'sign-up',
+      component: () => import('@/views/SignUpView.vue'),
+    },
+    {
+      path: '/auth/callback',
+      name: 'auth-callback',
+      component: () => import('@/views/AuthCallbackView.vue'),
+    },
+    {
+      path: '/auth/logout',
+      name: 'auth-logout',
+      component: () => import('@/views/LogoutView.vue'),
+    },
+    {
+      path: '/auth/logout/callback',
+      name: 'auth-logout-callback',
+      component: () => import('@/views/LogoutCallbackView.vue'),
+    },
+    {
       path: '/dashboard',
       name: 'dashboard',
       component: () => import('@/views/DashboardView.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/user',
       name: 'user-workspace',
       component: () => import('@/views/UserWorkspaceView.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/vacancies',
@@ -37,31 +65,37 @@ const router = createRouter({
       path: '/user/mock-interview/new',
       name: 'mock-interview-setup',
       component: () => import('@/views/MockInterviewSetupView.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/user/roadmap',
       name: 'learning-roadmap',
       component: () => import('@/views/LearningRoadmapView.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/business',
       name: 'business-workspace',
       component: () => import('@/views/BusinessWorkspaceView.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/business/vacancies',
       name: 'vacancies',
       component: () => import('@/views/VacanciesView.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/business/vacancies/new',
       name: 'vacancy-builder',
       component: () => import('@/views/VacancyBuilderView.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/business/vacancies/:vacancyId',
       name: 'vacancy-detail',
       component: () => import('@/views/VacancyDetailView.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/candidate/join',
@@ -77,13 +111,32 @@ const router = createRouter({
       path: '/results/:sessionId',
       name: 'results',
       component: () => import('@/views/ResultsView.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/sessions/:sessionId/report',
       name: 'session-report',
       component: () => import('@/views/SessionReportView.vue'),
+      meta: { requiresAuth: true },
     },
   ],
+})
+
+router.beforeEach(async (to) => {
+  if (!to.meta.requiresAuth) {
+    return true
+  }
+
+  if (!isZitadelConfigured) {
+    return { name: 'sign-in', query: { redirect: to.fullPath } }
+  }
+
+  const user = await getCurrentUser()
+  if (user && !user.expired) {
+    return true
+  }
+
+  return { name: 'sign-in', query: { redirect: to.fullPath } }
 })
 
 export default router

@@ -25,8 +25,6 @@ export type MeResponse = {
 }
 
 export type CompleteOnboardingPayload = {
-  firstName: string
-  lastName: string
   accountType: AppAccountType
   organizationName?: string
 }

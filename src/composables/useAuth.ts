@@ -5,6 +5,7 @@ import {
   getDisplayName,
   handleAuthCallback,
   handleLogoutCallback,
+  isStateNotFoundError,
   isZitadelConfigured,
   signIn,
   signOut,
@@ -69,6 +70,11 @@ export function useAuth() {
       user.value = await handleAuthCallback()
       return user.value
     } catch (caughtError) {
+      if (isStateNotFoundError(caughtError)) {
+        error.value = 'Session state was lost during redirect. This usually happens when the login was started from a different URL than the callback. Restarting login...'
+        await signIn()
+        return null
+      }
       error.value = caughtError instanceof Error ? caughtError.message : 'Failed to complete sign in.'
       throw caughtError
     } finally {

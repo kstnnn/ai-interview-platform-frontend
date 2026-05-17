@@ -8,22 +8,19 @@
           <p class="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Finish setup</p>
           <h1 class="mt-4 font-serif text-5xl font-bold tracking-tight text-foreground sm:text-6xl">Tell us how you want to use TechScreen.</h1>
           <p class="mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground">
-            Your identity has already been verified. This step creates the app profile and, for business accounts, your app organization.
+            Your identity has already been verified. This step only chooses your app workspace and, for business accounts, creates your app organization.
           </p>
         </section>
 
         <BaseCard class="p-8">
           <form class="space-y-6" @submit.prevent="submitOnboarding">
-            <div class="grid gap-4 sm:grid-cols-2">
-              <label class="block">
-                <span class="text-sm font-semibold text-foreground">First name</span>
-                <input v-model.trim="form.firstName" required class="mt-2 h-12 w-full rounded-full border border-border bg-input px-4 outline-none transition focus:border-primary" placeholder="Jane" />
-              </label>
-
-              <label class="block">
-                <span class="text-sm font-semibold text-foreground">Last name</span>
-                <input v-model.trim="form.lastName" required class="mt-2 h-12 w-full rounded-full border border-border bg-input px-4 outline-none transition focus:border-primary" placeholder="Doe" />
-              </label>
+            <div v-if="user" class="rounded-[1.5rem] border border-border/60 bg-muted/35 p-5">
+              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Verified identity</p>
+              <p class="mt-2 text-lg font-bold text-foreground">{{ displayName }}</p>
+              <p class="mt-1 text-sm text-muted-foreground">{{ user.email }}</p>
+              <p class="mt-3 text-xs leading-relaxed text-muted-foreground">
+                Name and email come from your verified identity profile. Your app profile will be linked to this account by the backend.
+              </p>
             </div>
 
             <fieldset>
@@ -65,7 +62,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive } from 'vue'
+import { computed, onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import AppFooter from '@/components/AppFooter.vue'
 import AppHeader from '@/components/AppHeader.vue'
@@ -75,13 +72,17 @@ import { getDefaultWorkspaceRoute, useAppSession } from '@/composables/useAppSes
 import type { AppAccountType } from '@/api/me'
 
 const router = useRouter()
-const { completeAppOnboarding, error, isLoading, loadAppSession } = useAppSession()
+const { completeAppOnboarding, error, isLoading, loadAppSession, user } = useAppSession()
 
 const form = reactive({
-  firstName: '',
-  lastName: '',
   accountType: 'USER' as AppAccountType,
   organizationName: '',
+})
+
+const displayName = computed(() => {
+  if (!user.value) return 'Verified user'
+
+  return [user.value.firstName, user.value.lastName].filter(Boolean).join(' ') || user.value.email
 })
 
 onMounted(async () => {
@@ -97,8 +98,6 @@ onMounted(async () => {
 
 async function submitOnboarding() {
   const session = await completeAppOnboarding({
-    firstName: form.firstName,
-    lastName: form.lastName,
     accountType: form.accountType,
     organizationName: form.accountType === 'BUSINESS' ? form.organizationName : undefined,
   })

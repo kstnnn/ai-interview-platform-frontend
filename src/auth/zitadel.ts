@@ -32,13 +32,14 @@ const settings: UserManagerSettings = {
   loadUserInfo: true,
   automaticSilentRenew: true,
   userStore: new WebStorageStateStore({ store: window.localStorage }),
+  stateStore: new WebStorageStateStore({ store: window.sessionStorage }),
 }
 
 export const userManager = new UserManager(settings)
 
 export async function signIn(returnTo = postLoginUrl) {
   ensureConfigured()
-  await userManager.signinRedirect({ state: { returnTo } })
+  await userManager.signinRedirect({ state: { returnTo }, extraQueryParams: { prompt: 'login' } })
 }
 
 export async function signUp() {
@@ -49,6 +50,13 @@ export async function signUp() {
 export async function handleAuthCallback() {
   ensureConfigured()
   return userManager.signinRedirectCallback()
+}
+
+export function isStateNotFoundError(error: unknown) {
+  if (error instanceof Error) {
+    return error.message.toLowerCase().includes('no matching state')
+  }
+  return false
 }
 
 export async function signOut() {

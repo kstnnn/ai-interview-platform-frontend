@@ -7,11 +7,11 @@
         <BaseCard class="order-2 p-8 lg:order-1">
           <h2 class="text-2xl font-bold text-foreground">Create your account</h2>
           <p class="mt-3 text-sm leading-relaxed text-muted-foreground">
-            Registration redirects to Zitadel. Enable registration in your Zitadel project if you want public sign-up.
+            Registration uses secure hosted authentication. Enable public registration in your identity provider if needed.
           </p>
 
           <div v-if="!isZitadelConfigured" class="mt-6 rounded-[1.5rem] border border-warning/30 bg-warning/10 p-4 text-sm text-foreground">
-            Zitadel environment variables are not configured yet. Add them to `.env.local` before using real sign-up.
+            Authentication is not configured yet. Add auth environment variables to `.env.local` before using real sign-up.
           </div>
 
           <div v-if="error" class="mt-6 rounded-[1.5rem] border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">
@@ -21,7 +21,7 @@
           <div class="mt-8 space-y-3">
             <BaseButton class="w-full" size="lg" :disabled="!isZitadelConfigured" @click="register">
               <UserPlus class="h-4 w-4" />
-              Create account with Zitadel
+              Create account
             </BaseButton>
             <RouterLink to="/sign-in" class="block">
               <BaseButton class="w-full" size="lg" variant="outline">I already have an account</BaseButton>

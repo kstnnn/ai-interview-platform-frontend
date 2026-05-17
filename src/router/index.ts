@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { getCurrentUser, isZitadelConfigured } from '@/auth/zitadel'
+import { getDefaultWorkspaceRoute, loadAppSession } from '@/composables/useAppSession'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -33,6 +34,12 @@ const router = createRouter({
       path: '/auth/logout/callback',
       name: 'auth-logout-callback',
       component: () => import('@/views/LogoutCallbackView.vue'),
+    },
+    {
+      path: '/onboarding',
+      name: 'onboarding',
+      component: () => import('@/views/OnboardingView.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/dashboard',
@@ -133,6 +140,22 @@ router.beforeEach(async (to) => {
 
   const user = await getCurrentUser()
   if (user && !user.expired) {
+    try {
+      const session = await loadAppSession()
+
+      if (session?.onboardingRequired && to.name !== 'onboarding') {
+        return { name: 'onboarding' }
+      }
+
+      if (!session?.onboardingRequired && to.name === 'onboarding') {
+        return getDefaultWorkspaceRoute(session?.user.accountType)
+      }
+    } catch {
+      if (to.name !== 'onboarding') {
+        return { name: 'onboarding' }
+      }
+    }
+
     return true
   }
 

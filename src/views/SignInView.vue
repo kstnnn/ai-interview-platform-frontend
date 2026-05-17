@@ -6,9 +6,9 @@
       <div class="mx-auto grid w-full max-w-6xl gap-8 lg:grid-cols-[1fr_0.8fr] lg:items-center">
         <section>
           <p class="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Secure access</p>
-          <h1 class="mt-4 font-serif text-5xl font-bold tracking-tight text-foreground sm:text-6xl">Sign in with Zitadel</h1>
+          <h1 class="mt-4 font-serif text-5xl font-bold tracking-tight text-foreground sm:text-6xl">Sign in securely</h1>
           <p class="mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground">
-            Authentication is handled by Zitadel hosted login with OIDC PKCE. This frontend never handles user passwords directly.
+            Authentication is handled by secure hosted login. This frontend never handles user passwords directly.
           </p>
         </section>
 
@@ -19,7 +19,7 @@
           </p>
 
           <div v-if="!isZitadelConfigured" class="mt-6 rounded-[1.5rem] border border-warning/30 bg-warning/10 p-4 text-sm text-foreground">
-            Zitadel environment variables are not configured yet. Add them to `.env.local` before using real login.
+            Authentication is not configured yet. Add auth environment variables to `.env.local` before using real login.
           </div>
 
           <div v-if="error" class="mt-6 rounded-[1.5rem] border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">
@@ -29,7 +29,7 @@
           <div class="mt-8 space-y-3">
             <BaseButton class="w-full" size="lg" :disabled="!isZitadelConfigured" @click="startLogin">
               <LogIn class="h-4 w-4" />
-              Continue with Zitadel
+              Continue
             </BaseButton>
             <RouterLink to="/sign-up" class="block">
               <BaseButton class="w-full" size="lg" variant="outline">Create account</BaseButton>

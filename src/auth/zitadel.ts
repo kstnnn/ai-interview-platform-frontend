@@ -93,6 +93,6 @@ export function getPostLoginUrl() {
 
 function ensureConfigured() {
   if (!isZitadelConfigured) {
-    throw new Error('Zitadel is not configured. Add VITE_ZITADEL_DOMAIN and VITE_ZITADEL_CLIENT_ID to your environment.')
+    throw new Error('Authentication is not configured. Add auth provider domain and client ID to your environment.')
   }
 }

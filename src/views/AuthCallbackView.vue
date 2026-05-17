@@ -3,10 +3,10 @@
     <BaseCard class="max-w-md p-8">
       <LoaderCircle class="mx-auto h-8 w-8 animate-spin text-primary" />
       <h1 class="mt-5 text-2xl font-bold text-foreground">Completing sign in</h1>
-      <p class="mt-3 text-sm leading-relaxed text-muted-foreground">Zitadel redirected back to the app. The frontend is finalizing the OIDC session.</p>
+      <p class="mt-3 text-sm leading-relaxed text-muted-foreground">The secure login flow redirected back to the app. Finalizing your session.</p>
 
-      <div v-if="error" class="mt-6 rounded-[1.5rem] border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">
-        {{ error }}
+      <div v-if="callbackError || appSessionError" class="mt-6 rounded-[1.5rem] border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">
+        {{ callbackError || appSessionError }}
       </div>
     </BaseCard>
   </div>
@@ -18,20 +18,27 @@ import { useRouter } from 'vue-router'
 import { LoaderCircle } from 'lucide-vue-next'
 import type { User } from 'oidc-client-ts'
 import BaseCard from '@/components/BaseCard.vue'
-import { getPostLoginUrl } from '@/auth/zitadel'
 import { useAuth } from '@/composables/useAuth'
+import { getDefaultWorkspaceRoute, useAppSession } from '@/composables/useAppSession'
 
 const router = useRouter()
-const { completeCallback, error } = useAuth()
+const { completeCallback, error: callbackError } = useAuth()
+const { error: appSessionError, loadAppSession } = useAppSession()
 
 onMounted(async () => {
   try {
     const user = await completeCallback()
-    await router.replace(getCallbackRedirect(user))
+    const returnTo = getCallbackRedirect(user)
+    const session = await loadAppSession(true)
+
+    if (session?.onboardingRequired) {
+      await router.replace('/onboarding')
+      return
+    }
+
+    await router.replace(returnTo ?? getDefaultWorkspaceRoute(session?.user.accountType))
   } catch {
-    window.setTimeout(() => {
-      void router.replace('/sign-in')
-    }, 2500)
+    // Keep this page visible so API/backend errors can be read during integration.
   }
 })
 
@@ -44,6 +51,6 @@ function getCallbackRedirect(user: User | null) {
     }
   }
 
-  return getPostLoginUrl()
+  return null
 }
 </script>

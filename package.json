@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "lucide-vue-next": "^0.564.0",
+    "ofetch": "^1.5.1",
     "oidc-client-ts": "^3.5.0",
     "vue": "^3.5.22",
     "vue-oidc-context": "^0.1.1",

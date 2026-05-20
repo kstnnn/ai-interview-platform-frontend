@@ -5,42 +5,42 @@
     <main class="flex-1 px-4 py-12 sm:px-6 lg:px-8">
       <div class="mx-auto max-w-2xl">
         <div class="mb-8 text-center">
-          <h1 class="text-3xl font-bold text-foreground sm:text-4xl">Join Your Interview</h1>
-          <p class="mt-2 text-muted-foreground">This page now does frontend validation only and no longer pretends there is a server session verification flow.</p>
+          <h1 class="text-3xl font-bold text-foreground sm:text-4xl">{{ t('candidateJoin.title') }}</h1>
+          <p class="mt-2 text-muted-foreground">{{ t('candidateJoin.description') }}</p>
         </div>
 
         <BaseCard class="p-8">
           <form class="space-y-6" @submit.prevent="handleSubmit">
             <div class="space-y-2">
-              <label for="sessionCode" class="block text-sm font-semibold text-foreground">Session Code</label>
+              <label for="sessionCode" class="block text-sm font-semibold text-foreground">{{ t('candidateJoin.sessionCode') }}</label>
               <input
                 id="sessionCode"
                 v-model="form.sessionCode"
                 type="text"
-                placeholder="e.g. ABC123XYZ"
+                :placeholder="t('candidateJoin.sessionCodePlaceholder')"
                 class="h-12 w-full rounded-full border border-border bg-input px-4 font-mono uppercase outline-none transition focus:border-primary"
               />
-              <p class="text-xs text-muted-foreground">Available demo code: `ABC123XYZ`</p>
+              <p class="text-xs text-muted-foreground" v-html="t('candidateJoin.sessionCodeHint')"></p>
             </div>
 
             <div class="space-y-2">
-              <label for="name" class="block text-sm font-semibold text-foreground">Full Name</label>
+              <label for="name" class="block text-sm font-semibold text-foreground">{{ t('candidateJoin.name') }}</label>
               <input
                 id="name"
                 v-model="form.name"
                 type="text"
-                placeholder="John Doe"
+                :placeholder="t('candidateJoin.namePlaceholder')"
                 class="h-12 w-full rounded-full border border-border bg-input px-4 outline-none transition focus:border-primary"
               />
             </div>
 
             <div class="space-y-2">
-              <label for="email" class="block text-sm font-semibold text-foreground">Email Address</label>
+              <label for="email" class="block text-sm font-semibold text-foreground">{{ t('candidateJoin.email') }}</label>
               <input
                 id="email"
                 v-model="form.email"
                 type="email"
-                placeholder="john@example.com"
+                :placeholder="t('candidateJoin.emailPlaceholder')"
                 class="h-12 w-full rounded-full border border-border bg-input px-4 outline-none transition focus:border-primary"
               />
             </div>
@@ -50,17 +50,17 @@
             </div>
 
             <BaseButton size="lg" tag="button" class="w-full">
-              Start Interview
+              {{ t('candidateJoin.startInterview') }}
               <ArrowRight class="h-4 w-4" />
             </BaseButton>
           </form>
 
           <div class="mt-8 border-t border-border pt-8">
-            <h2 class="font-semibold text-foreground">Before you start</h2>
+            <h2 class="font-semibold text-foreground">{{ t('candidateJoin.beforeStart') }}</h2>
             <ul class="mt-4 space-y-3 text-sm text-muted-foreground">
-              <li class="flex gap-2"><CheckCircle2 class="mt-0.5 h-4 w-4 text-success" />Use Chrome or Edge if you want speech recognition.</li>
-              <li class="flex gap-2"><CheckCircle2 class="mt-0.5 h-4 w-4 text-success" />Pick a quiet room because the interview page listens through the browser microphone.</li>
-              <li class="flex gap-2"><CheckCircle2 class="mt-0.5 h-4 w-4 text-success" />This is a frontend-only demo until your real backend endpoints are ready.</li>
+              <li class="flex gap-2"><CheckCircle2 class="mt-0.5 h-4 w-4 text-success" />{{ t('candidateJoin.tipBrowser') }}</li>
+              <li class="flex gap-2"><CheckCircle2 class="mt-0.5 h-4 w-4 text-success" />{{ t('candidateJoin.tipQuiet') }}</li>
+              <li class="flex gap-2"><CheckCircle2 class="mt-0.5 h-4 w-4 text-success" />{{ t('candidateJoin.tipDemo') }}</li>
             </ul>
           </div>
         </BaseCard>
@@ -80,8 +80,10 @@ import AppHeader from '@/components/AppHeader.vue'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseCard from '@/components/BaseCard.vue'
 import { getSessionByCode } from '@/data/mock-data'
+import { useI18n } from '@/i18n'
 
 const router = useRouter()
+const { t } = useI18n()
 const error = ref('')
 const form = reactive({
   sessionCode: '',
@@ -93,13 +95,13 @@ function handleSubmit() {
   error.value = ''
 
   if (!form.sessionCode || !form.name || !form.email) {
-    error.value = 'Fill in session code, name, and email before continuing.'
+    error.value = t('candidateJoin.fillAll')
     return
   }
 
   const session = getSessionByCode(form.sessionCode.toUpperCase())
   if (!session) {
-    error.value = 'Unknown session code. For the current demo use ABC123XYZ.'
+    error.value = t('candidateJoin.unknownCode')
     return
   }
 

@@ -6,20 +6,20 @@
       <div class="mx-auto max-w-5xl">
         <RouterLink to="/user" class="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft class="h-4 w-4" />
-          Back to user workspace
+          {{ t('mockInterview.backToUser') }}
         </RouterLink>
 
         <div class="mt-6 grid gap-8 lg:grid-cols-[1fr_0.75fr]">
           <BaseCard class="p-8">
-            <h1 class="font-serif text-4xl font-bold text-foreground">Create a mock interview</h1>
+            <h1 class="font-serif text-4xl font-bold text-foreground">{{ t('mockInterview.title') }}</h1>
             <p class="mt-3 text-muted-foreground">
-              This is a frontend-only setup screen. Later it can submit stack, level, focus, and duration to your backend before opening an interview session.
+              {{ t('mockInterview.description') }}
             </p>
 
             <form class="mt-8 space-y-6" @submit.prevent="startDemoInterview">
               <div class="grid gap-5 sm:grid-cols-2">
                 <label class="space-y-2">
-                  <span class="block text-sm font-semibold text-foreground">Primary stack</span>
+                  <span class="block text-sm font-semibold text-foreground">{{ t('mockInterview.primaryStack') }}</span>
                   <select v-model="form.stack" class="h-12 w-full rounded-full border border-border bg-input px-4 outline-none focus:border-primary">
                     <option>Vue + TypeScript</option>
                     <option>React + Node.js</option>
@@ -29,7 +29,7 @@
                 </label>
 
                 <label class="space-y-2">
-                  <span class="block text-sm font-semibold text-foreground">Level</span>
+                  <span class="block text-sm font-semibold text-foreground">{{ t('mockInterview.level') }}</span>
                   <select v-model="form.level" class="h-12 w-full rounded-full border border-border bg-input px-4 outline-none focus:border-primary">
                     <option>Junior</option>
                     <option>Mid</option>
@@ -40,23 +40,23 @@
               </div>
 
               <label class="space-y-2 block">
-                <span class="block text-sm font-semibold text-foreground">Interview focus</span>
-                <textarea v-model="form.focus" rows="4" class="w-full rounded-[1.5rem] border border-border bg-input px-4 py-3 outline-none focus:border-primary" placeholder="Example: frontend architecture, system design, async communication"></textarea>
+                <span class="block text-sm font-semibold text-foreground">{{ t('mockInterview.focus') }}</span>
+                <textarea v-model="form.focus" rows="4" class="w-full rounded-[1.5rem] border border-border bg-input px-4 py-3 outline-none focus:border-primary" :placeholder="t('mockInterview.focusPlaceholder')"></textarea>
               </label>
 
               <div class="grid gap-5 sm:grid-cols-2">
                 <label class="space-y-2">
-                  <span class="block text-sm font-semibold text-foreground">Duration</span>
+                  <span class="block text-sm font-semibold text-foreground">{{ t('mockInterview.duration') }}</span>
                   <select v-model="form.duration" class="h-12 w-full rounded-full border border-border bg-input px-4 outline-none focus:border-primary">
-                    <option>30 minutes</option>
-                    <option>45 minutes</option>
-                    <option>60 minutes</option>
-                    <option>75 minutes</option>
+                    <option>30 {{ t('common.minutes') }}</option>
+                    <option>45 {{ t('common.minutes') }}</option>
+                    <option>60 {{ t('common.minutes') }}</option>
+                    <option>75 {{ t('common.minutes') }}</option>
                   </select>
                 </label>
 
                 <label class="space-y-2">
-                  <span class="block text-sm font-semibold text-foreground">Mode</span>
+                  <span class="block text-sm font-semibold text-foreground">{{ t('mockInterview.mode') }}</span>
                   <select v-model="form.mode" class="h-12 w-full rounded-full border border-border bg-input px-4 outline-none focus:border-primary">
                     <option>Voice interview</option>
                     <option>Text interview</option>
@@ -66,7 +66,7 @@
               </div>
 
               <BaseButton size="lg" tag="button">
-                Continue to interview demo
+                {{ t('mockInterview.continue') }}
                 <ArrowRight class="h-4 w-4" />
               </BaseButton>
             </form>
@@ -74,7 +74,7 @@
 
           <div class="space-y-5">
             <BaseCard class="p-6">
-              <h2 class="text-lg font-bold text-foreground">Backend shape preview</h2>
+              <h2 class="text-lg font-bold text-foreground">{{ t('mockInterview.backendPreview') }}</h2>
               <div class="mt-4 rounded-[1.5rem] bg-muted/50 p-4 font-mono text-xs leading-relaxed text-muted-foreground">
                 POST /mock-interviews<br />
                 stack, level, duration, focus, mode
@@ -82,11 +82,11 @@
             </BaseCard>
 
             <BaseCard class="p-6">
-              <h2 class="text-lg font-bold text-foreground">What happens after</h2>
+              <h2 class="text-lg font-bold text-foreground">{{ t('mockInterview.whatHappens') }}</h2>
               <ul class="mt-4 space-y-3 text-sm text-muted-foreground">
-                <li class="flex gap-2"><CheckCircle2 class="mt-0.5 h-4 w-4 text-success" />AI chooses questions from the question bank.</li>
-                <li class="flex gap-2"><CheckCircle2 class="mt-0.5 h-4 w-4 text-success" />Candidate completes the interview flow.</li>
-                <li class="flex gap-2"><CheckCircle2 class="mt-0.5 h-4 w-4 text-success" />Results produce feedback, resources, and a roadmap.</li>
+                <li class="flex gap-2"><CheckCircle2 class="mt-0.5 h-4 w-4 text-success" />{{ t('mockInterview.aiChooses') }}</li>
+                <li class="flex gap-2"><CheckCircle2 class="mt-0.5 h-4 w-4 text-success" />{{ t('mockInterview.candidateCompletes') }}</li>
+                <li class="flex gap-2"><CheckCircle2 class="mt-0.5 h-4 w-4 text-success" />{{ t('mockInterview.resultsProduce') }}</li>
               </ul>
             </BaseCard>
           </div>
@@ -106,8 +106,10 @@ import AppFooter from '@/components/AppFooter.vue'
 import AppHeader from '@/components/AppHeader.vue'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseCard from '@/components/BaseCard.vue'
+import { useI18n } from '@/i18n'
 
 const router = useRouter()
+const { t } = useI18n()
 const form = reactive({
   stack: 'Vue + TypeScript',
   level: 'Mid',

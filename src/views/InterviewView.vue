@@ -4,21 +4,21 @@
       <div class="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
         <div>
           <h1 class="font-serif text-lg font-bold text-foreground">{{ session.position }} Interview</h1>
-          <p class="text-sm text-muted-foreground">Question {{ currentQuestionIndex + 1 }} of {{ totalQuestions }}</p>
+          <p class="text-sm text-muted-foreground">{{ t('interview.questionOf').replace('{current}', String(currentQuestionIndex + 1)).replace('{total}', String(totalQuestions)) }}</p>
         </div>
 
         <div class="flex items-center gap-3">
           <div class="rounded-full border border-primary/20 bg-primary/10 px-4 py-2 font-mono text-sm font-semibold text-foreground">
             {{ timerLabel }}
           </div>
-          <BaseButton variant="outline" size="sm" @click="finishInterview">End</BaseButton>
+          <BaseButton variant="outline" size="sm" @click="finishInterview">{{ t('interview.end') }}</BaseButton>
         </div>
       </div>
     </header>
 
     <div class="mx-auto max-w-5xl px-4 pt-4 sm:px-6 lg:px-8">
       <div class="mb-2 flex items-center justify-between text-sm">
-        <span class="font-medium text-foreground">Interview Progress</span>
+        <span class="font-medium text-foreground">{{ t('interview.progress') }}</span>
         <span class="text-muted-foreground">{{ Math.round(progress) }}%</span>
       </div>
       <div class="h-2 overflow-hidden rounded-full bg-muted">
@@ -31,19 +31,19 @@
         <div class="border-b border-border/40 p-6">
           <div class="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h2 class="font-serif text-2xl font-bold text-foreground">Voice Interview Demo</h2>
+              <h2 class="font-serif text-2xl font-bold text-foreground">{{ t('interview.voiceTitle') }}</h2>
               <p class="mt-1 text-sm text-muted-foreground">
-                This screen now runs locally in the browser with scripted interviewer prompts.
+                {{ t('interview.voiceDesc') }}
               </p>
             </div>
             <div class="flex gap-3">
               <BaseButton variant="outline" size="sm" @click="toggleMute">
                 <component :is="isMuted ? VolumeX : Volume2" class="h-4 w-4" />
-                {{ isMuted ? 'Unmute' : 'Mute' }}
+                {{ isMuted ? t('interview.unmute') : t('interview.mute') }}
               </BaseButton>
               <BaseButton variant="outline" size="sm" @click="speakCurrentQuestion">
                 <Play class="h-4 w-4" />
-                Replay prompt
+                {{ t('interview.replay') }}
               </BaseButton>
             </div>
           </div>
@@ -92,7 +92,7 @@
             {{ voiceError }}
           </div>
           <div v-if="!speechRecognitionSupported || !speechSynthesisSupported" class="mb-4 rounded-organic border border-warning/20 bg-warning/10 p-4 text-sm text-foreground">
-            Voice features depend on browser support. Text flow still works visually if your browser lacks some APIs.
+            {{ t('interview.voiceUnsupported') }}
           </div>
 
           <div class="flex flex-wrap items-center justify-center gap-4">
@@ -102,7 +102,7 @@
 
             <BaseButton :disabled="!canSubmitAnswer" @click="submitAnswer">
               <Send class="h-4 w-4" />
-              Submit answer
+              {{ t('interview.submitAnswer') }}
             </BaseButton>
           </div>
         </div>
@@ -112,10 +112,10 @@
 
   <div v-else class="flex min-h-screen items-center justify-center px-4 text-center">
     <BaseCard class="max-w-md p-8">
-      <h1 class="text-2xl font-bold text-foreground">Session not found</h1>
-      <p class="mt-3 text-muted-foreground">The current frontend demo only has a few local sessions configured.</p>
+      <h1 class="text-2xl font-bold text-foreground">{{ t('interview.notFound') }}</h1>
+      <p class="mt-3 text-muted-foreground">{{ t('interview.notFoundDesc') }}</p>
       <RouterLink to="/candidate/join" class="mt-6 inline-block">
-        <BaseButton>Back to Join</BaseButton>
+        <BaseButton>{{ t('interview.backToJoin') }}</BaseButton>
       </RouterLink>
     </BaseCard>
   </div>
@@ -128,13 +128,16 @@ import { Bot, Mic, MicOff, Play, Send, User, Volume2, VolumeX } from 'lucide-vue
 import BaseButton from '@/components/BaseButton.vue'
 import BaseCard from '@/components/BaseCard.vue'
 import { useVoiceInterview } from '@/composables/useVoiceInterview'
-import { getSessionById, scriptedInterviewQuestions } from '@/data/mock-data'
+import { getSessionById, getLocalizedScriptedQuestions } from '@/data/mock-data'
 import type { ChatMessage } from '@/types/interview'
+import { useI18n } from '@/i18n'
 
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 const session = computed(() => getSessionById(String(route.params.sessionId ?? '')))
-const totalQuestions = scriptedInterviewQuestions.length
+const scriptedQuestions = getLocalizedScriptedQuestions()
+const totalQuestions = scriptedQuestions.length
 
 const messages = ref<ChatMessage[]>([])
 const currentQuestionIndex = ref(0)
@@ -186,7 +189,7 @@ function addUserMessage(text: string) {
 }
 
 function askCurrentQuestion() {
-  addAssistantMessage(scriptedInterviewQuestions[currentQuestionIndex.value])
+  addAssistantMessage(scriptedQuestions[currentQuestionIndex.value])
 }
 
 function submitAnswer() {
@@ -231,7 +234,7 @@ function toggleMute() {
 function speakCurrentQuestion() {
   cancelSpeech()
   if (!isMuted.value) {
-    speak(scriptedInterviewQuestions[currentQuestionIndex.value])
+    speak(scriptedQuestions[currentQuestionIndex.value])
   }
 }
 
@@ -265,7 +268,8 @@ onMounted(() => {
     secondsElapsed.value += 1
   }, 1000)
 
-  addAssistantMessage(`Hello ${session.value.candidateName}. Welcome to your ${session.value.position} interview.`)
+  const welcome = t('interview.welcome').replace('{name}', session.value.candidateName).replace('{position}', session.value.position)
+  addAssistantMessage(welcome)
   window.setTimeout(() => {
     askCurrentQuestion()
   }, 700)

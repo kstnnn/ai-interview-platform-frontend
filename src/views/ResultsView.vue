@@ -5,15 +5,15 @@
     <main class="flex-1 px-4 py-12 sm:px-6 lg:px-8">
       <div class="mx-auto max-w-4xl">
         <div class="mb-8 text-center">
-          <h1 class="text-3xl font-bold text-foreground sm:text-4xl">Interview Results</h1>
-          <p class="mt-2 text-muted-foreground">Detailed frontend report for {{ session.candidateName }}</p>
+          <h1 class="text-3xl font-bold text-foreground sm:text-4xl">{{ t('results.title') }}</h1>
+          <p class="mt-2 text-muted-foreground">{{ t('results.subtitle').replace('{name}', session.candidateName) }}</p>
         </div>
 
         <BaseCard class="mb-8 border-2 border-primary/20 p-8">
           <div class="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <div class="text-5xl font-bold text-primary">{{ score.overallScore }}</div>
-              <p class="mt-2 text-sm text-muted-foreground">out of 100</p>
+              <p class="mt-2 text-sm text-muted-foreground">{{ t('results.outOf') }}</p>
             </div>
             <div :class="recommendationClass" class="rounded-full px-4 py-2 text-sm font-semibold">
               {{ recommendationLabel }}
@@ -26,26 +26,26 @@
         </BaseCard>
 
         <div class="mb-8 grid gap-4 sm:grid-cols-2">
-          <MetricCard title="Technical Skill" :value="score.technicalSkill" />
-          <MetricCard title="Problem Solving" :value="score.problemSolving" />
-          <MetricCard title="Communication" :value="score.communication" />
-          <MetricCard title="Code Quality" :value="score.codeQuality" />
+          <MetricCard :title="t('results.technicalSkill')" :value="score.technicalSkill" />
+          <MetricCard :title="t('results.problemSolving')" :value="score.problemSolving" />
+          <MetricCard :title="t('results.communication')" :value="score.communication" />
+          <MetricCard :title="t('results.codeQuality')" :value="score.codeQuality" />
         </div>
 
         <BaseCard class="mb-8 p-8">
-          <h2 class="text-xl font-bold text-foreground">Session Information</h2>
+          <h2 class="text-xl font-bold text-foreground">{{ t('results.sessionInfo') }}</h2>
           <div class="mt-6 grid gap-4 sm:grid-cols-2">
-            <InfoItem label="Candidate" :value="session.candidateName" />
-            <InfoItem label="Position" :value="session.position" />
-            <InfoItem label="Level" :value="session.level" />
-            <InfoItem label="Interviewer" :value="session.interviewerName ?? '—'" />
-            <InfoItem label="Date" :value="completedDate" />
-            <InfoItem label="Duration" value="1 hour 30 minutes" />
+            <InfoItem :label="t('results.candidate')" :value="session.candidateName" />
+            <InfoItem :label="t('results.position')" :value="session.position" />
+            <InfoItem :label="t('results.level')" :value="session.level" />
+            <InfoItem :label="t('results.interviewer')" :value="session.interviewerName ?? '—'" />
+            <InfoItem :label="t('results.date')" :value="completedDate" />
+            <InfoItem :label="t('results.duration')" :value="t('results.durationValue')" />
           </div>
         </BaseCard>
 
         <BaseCard v-if="session.feedback" class="mb-8 p-8">
-          <h2 class="text-xl font-bold text-foreground">Interviewer Feedback</h2>
+          <h2 class="text-xl font-bold text-foreground">{{ t('results.feedback') }}</h2>
           <p class="mt-4 leading-relaxed text-muted-foreground">{{ session.feedback }}</p>
         </BaseCard>
 
@@ -53,11 +53,11 @@
           <RouterLink to="/dashboard">
             <BaseButton variant="outline">
               <ArrowLeft class="h-4 w-4" />
-              Back to Dashboard
+              {{ t('results.backToDashboard') }}
             </BaseButton>
           </RouterLink>
           <RouterLink :to="`/sessions/${session.id}/report`">
-            <BaseButton>Open Session Report</BaseButton>
+            <BaseButton>{{ t('results.openReport') }}</BaseButton>
           </RouterLink>
         </div>
       </div>
@@ -68,10 +68,10 @@
 
   <div v-else class="flex min-h-screen items-center justify-center px-4 text-center">
     <BaseCard class="max-w-md p-8">
-      <h1 class="text-2xl font-bold text-foreground">Result unavailable</h1>
-      <p class="mt-3 text-muted-foreground">This demo result exists only for completed local sessions.</p>
+      <h1 class="text-2xl font-bold text-foreground">{{ t('results.unavailable') }}</h1>
+      <p class="mt-3 text-muted-foreground">{{ t('results.unavailableDesc') }}</p>
       <RouterLink to="/dashboard" class="mt-6 inline-block">
-        <BaseButton>Back to Dashboard</BaseButton>
+        <BaseButton>{{ t('results.backToDashboardBtn') }}</BaseButton>
       </RouterLink>
     </BaseCard>
   </div>
@@ -86,8 +86,10 @@ import AppHeader from '@/components/AppHeader.vue'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseCard from '@/components/BaseCard.vue'
 import { getScoreForSession, getSessionById } from '@/data/mock-data'
+import { useI18n } from '@/i18n'
 
 const route = useRoute()
+const { t } = useI18n()
 const sessionId = computed(() => String(route.params.sessionId ?? ''))
 const session = computed(() => getSessionById(sessionId.value))
 const score = computed(() => getScoreForSession(sessionId.value))
@@ -102,11 +104,11 @@ const completedDate = computed(() => {
 
 const recommendationLabel = computed(() => {
   const recommendation = score.value?.recommendation
-  if (recommendation === 'strong-yes') return 'Strong Yes'
-  if (recommendation === 'yes') return 'Yes'
-  if (recommendation === 'maybe') return 'Maybe'
-  if (recommendation === 'no') return 'No'
-  return 'Strong No'
+  if (recommendation === 'strong-yes') return t('results.strongYes')
+  if (recommendation === 'yes') return t('results.yes')
+  if (recommendation === 'maybe') return t('results.maybe')
+  if (recommendation === 'no') return t('results.no')
+  return t('results.strongNo')
 })
 
 const recommendationClass = computed(() => {

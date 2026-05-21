@@ -41,24 +41,33 @@ import { useI18n } from '@/i18n'
 const router = useRouter()
 const { t } = useI18n()
 const { completeCallback, error: callbackError, logout } = useAuth()
-const { error: appSessionError, loadAppSession } = useAppSession()
+const { error: appSessionError, loadAppSession, userType } = useAppSession()
 const hasError = ref(false)
 
 const isStateError = computed(() => callbackError.value.toLowerCase().includes('session state was lost'))
 
 onMounted(async () => {
   try {
-    const user = await completeCallback()
-    if (!user) return
-    const returnTo = getCallbackRedirect(user)
-    const session = await loadAppSession(true)
+    const zitadelUser = await completeCallback()
+    if (!zitadelUser) return
 
-    if (session?.onboardingRequired) {
-      await router.replace('/onboarding')
+    const sub = zitadelUser.profile.sub
+    if (!sub) {
+      hasError.value = true
       return
     }
 
-    await router.replace(returnTo ?? getDefaultWorkspaceRoute(session?.user.accountType))
+    try {
+      await loadAppSession(sub, true)
+    } catch (err: any) {
+      if (err?.code === 'USER_NOT_FOUND' || err?.status === 404) {
+        await router.replace('/onboarding')
+        return
+      }
+      throw err
+    }
+
+    await router.replace(getDefaultWorkspaceRoute(userType.value))
   } catch {
     hasError.value = true
   }
@@ -67,17 +76,26 @@ onMounted(async () => {
 async function retry() {
   hasError.value = false
   try {
-    const user = await completeCallback()
-    if (!user) return
-    const returnTo = getCallbackRedirect(user)
-    const session = await loadAppSession(true)
+    const zitadelUser = await completeCallback()
+    if (!zitadelUser) return
 
-    if (session?.onboardingRequired) {
-      await router.replace('/onboarding')
+    const sub = zitadelUser.profile.sub
+    if (!sub) {
+      hasError.value = true
       return
     }
 
-    await router.replace(returnTo ?? getDefaultWorkspaceRoute(session?.user.accountType))
+    try {
+      await loadAppSession(sub, true)
+    } catch (err: any) {
+      if (err?.code === 'USER_NOT_FOUND' || err?.status === 404) {
+        await router.replace('/onboarding')
+        return
+      }
+      throw err
+    }
+
+    await router.replace(getDefaultWorkspaceRoute(userType.value))
   } catch {
     hasError.value = true
   }

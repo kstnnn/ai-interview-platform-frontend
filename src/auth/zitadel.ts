@@ -88,6 +88,11 @@ export async function getAccessToken() {
   return user?.access_token ?? null
 }
 
+export async function getIdToken() {
+  const user = await getCurrentUser()
+  return user?.id_token ?? null
+}
+
 export function getDisplayName(user: User | null) {
   if (!user) return ''
 

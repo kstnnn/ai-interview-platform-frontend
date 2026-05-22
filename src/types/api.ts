@@ -60,8 +60,33 @@ export type InterviewTopicResult = {
   avgScore: number
 }
 
+export type InterviewQuestionReport = {
+  sessionQuestionId: string
+  roundNumber: number
+  questionIndex: number
+  questionType: string
+  topic: string
+  subtopic: string | null
+  difficulty: string | null
+  questionText: string
+  answerText: string | null
+  correctnessScore: number | null
+  depthScore: number | null
+  practicalScore: number | null
+  totalScore: number | null
+  feedback: string | null
+  knowledgeGaps: string[]
+}
+
 export type InterviewResult = {
   sessionId: string
+  status?: string
+  finishedReason?: string | null
+  interviewLevel?: InterviewLevel
+  interviewLanguage?: InterviewLanguage
   sessionConfidence: number
+  startedAt?: string | null
+  finishedAt?: string | null
   topics: InterviewTopicResult[]
+  questions?: InterviewQuestionReport[]
 }

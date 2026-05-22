@@ -14,17 +14,34 @@ export type InterviewMessage = {
   metadata?: Record<string, unknown>
 }
 
+export type InterviewQuestion = {
+  text: string
+  index?: number
+  total?: number
+  roundNumber?: number
+  remainingQuestions?: number
+  questionType?: string
+}
+
+export type RateLimitError = {
+  message: string
+  retryAfterSeconds: number
+  retryAvailableAt: number
+}
+
 const isConnected = ref(false)
 const isConnecting = ref(false)
 const isReconnecting = ref(false)
 const status = ref<InterviewStatus>('idle')
 const error = ref<string | null>(null)
 const messages = ref<InterviewMessage[]>([])
-const currentQuestion = ref<{ text: string; index?: number; total?: number } | null>(null)
+const currentQuestion = ref<InterviewQuestion | null>(null)
 const interviewResult = ref<InterviewResult | null>(null)
 const reconnectAttempts = ref(0)
 const hasReceivedGreeting = ref(false)
 const latestAnswerScore = ref<number | null>(null)
+const rateLimitError = ref<RateLimitError | null>(null)
+const pendingAnswer = ref<{ sessionQuestionId: string; answerText: string } | null>(null)
 
 let stompClient: Client | null = null
 let currentSessionId = ''
@@ -67,12 +84,16 @@ function handleEvent(event: STOMPEvent) {
     }
     case 'QUESTION_ASKED': {
       const text = (event.payload.question as string) || (event.payload.text as string) || ''
-      const index = (event.payload.roundNumber as number) ?? (event.payload.index as number) ?? ++questionIndex
-      const total = (event.payload.total as number) ?? undefined
+      const roundNumber = (event.payload.roundNumber as number | undefined) ?? undefined
+      const index = (event.payload.questionIndex as number | undefined) ?? roundNumber ?? (event.payload.index as number | undefined) ?? ++questionIndex
+      const total = (event.payload.maxQuestions as number | undefined) ?? (event.payload.total as number | undefined) ?? undefined
+      const remainingQuestions = event.payload.remainingQuestions as number | undefined
       const questionType = event.payload.questionType as string | undefined
       currentSessionQuestionId.value = (event.payload.sessionQuestionId as string) ?? ''
-      currentQuestion.value = { text, index, total }
-      addMessage({ type: 'question', text, metadata: { index, total, questionType, sessionQuestionId: currentSessionQuestionId.value } })
+      pendingAnswer.value = null
+      rateLimitError.value = null
+      currentQuestion.value = { text, index, total, roundNumber, remainingQuestions, questionType }
+      addMessage({ type: 'question', text, metadata: { index, total, roundNumber, remainingQuestions, questionType, sessionQuestionId: currentSessionQuestionId.value } })
       status.value = 'started'
       break
     }
@@ -101,12 +122,30 @@ function handleEvent(event: STOMPEvent) {
       }
 
       addMessage({ type: 'system', text: 'Interview finished. Redirecting to results...' })
+      rateLimitError.value = null
+      pendingAnswer.value = null
+      currentSessionQuestionId.value = ''
       window.sessionStorage.removeItem(`interviewStarted_${currentSessionId}`)
       status.value = 'finished'
       break
     }
     case 'ERROR': {
       const text = (event.payload.message as string) || (event.payload.error as string) || 'An error occurred.'
+      const code = event.payload.code as string | undefined
+      if (code === 'AI_RATE_LIMIT') {
+        const retryAfterSeconds = Number(event.payload.retryAfterSeconds ?? 0)
+        rateLimitError.value = {
+          message: text,
+          retryAfterSeconds,
+          retryAvailableAt: Date.now() + retryAfterSeconds * 1000,
+        }
+        if (pendingAnswer.value) {
+          currentSessionQuestionId.value = pendingAnswer.value.sessionQuestionId
+        }
+        error.value = text
+        status.value = 'started'
+        break
+      }
       addMessage({ type: 'error', text })
       error.value = text
       break
@@ -182,6 +221,8 @@ export function useInterviewWebSocket() {
     hasReceivedGreeting.value = false
     currentSessionQuestionId.value = ''
     latestAnswerScore.value = null
+    rateLimitError.value = null
+    pendingAnswer.value = null
     messages.value = []
     currentQuestion.value = null
     interviewResult.value = null
@@ -245,6 +286,8 @@ export function useInterviewWebSocket() {
       return
     }
     const answeredQuestionId = currentSessionQuestionId.value
+    pendingAnswer.value = { sessionQuestionId: answeredQuestionId, answerText: answer }
+    rateLimitError.value = null
     currentSessionQuestionId.value = ''
     status.value = 'evaluating'
     stompClient.publish({
@@ -255,6 +298,19 @@ export function useInterviewWebSocket() {
       }),
     })
     addMessage({ type: 'answer', text: answer })
+  }
+
+  function retryLastAnswer() {
+    if (!pendingAnswer.value || !stompClient || !stompClient.connected) return
+    if (rateLimitError.value && Date.now() < rateLimitError.value.retryAvailableAt) return
+
+    rateLimitError.value = null
+    currentSessionQuestionId.value = ''
+    status.value = 'evaluating'
+    stompClient.publish({
+      destination: `/app/interviews/${currentSessionId}/answers`,
+      body: JSON.stringify(pendingAnswer.value),
+    })
   }
 
   function sendLeave() {
@@ -293,11 +349,14 @@ export function useInterviewWebSocket() {
     currentSessionQuestionId: readonly(currentSessionQuestionId),
     hasReceivedGreeting: readonly(hasReceivedGreeting),
     latestAnswerScore: readonly(latestAnswerScore),
+    rateLimitError: readonly(rateLimitError),
+    pendingAnswer: readonly(pendingAnswer),
     connect,
     disconnect,
     sendStart,
     sendReady,
     sendAnswer,
+    retryLastAnswer,
     sendLeave,
     retryConnection,
   }

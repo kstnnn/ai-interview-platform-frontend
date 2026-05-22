@@ -5,8 +5,7 @@
         <div>
           <h1 class="font-serif text-lg font-bold text-foreground">{{ t('interview.title') }}</h1>
           <p v-if="currentQuestion" class="text-sm text-muted-foreground">
-            {{ t('interview.questionOf').replace('{current}', String(currentQuestion.index ??
-              questionCount)).replace('{total}', String(currentQuestion.total ?? maxQuestions)) }}
+            {{ t('interview.questionOf').replace('{current}', String(currentQuestion.index ?? 0)).replace('{total}', String(currentQuestion.total ?? 0)) }}
           </p>
           <p v-else-if="status === 'connecting'" class="text-sm text-muted-foreground">{{ t('interview.connecting') }}
           </p>
@@ -23,10 +22,10 @@
       </div>
     </header>
 
-    <div v-if="currentQuestion || questionCount > 0" class="mx-auto max-w-5xl px-4 pt-4 sm:px-6 lg:px-8">
+    <div v-if="currentQuestion" class="mx-auto max-w-5xl px-4 pt-4 sm:px-6 lg:px-8">
       <div class="mb-2 flex items-center justify-between text-sm">
         <span class="font-medium text-foreground">{{ t('interview.progress') }}</span>
-        <span class="text-muted-foreground">{{ progress }}%</span>
+        <span class="text-muted-foreground">{{ progress }}% · {{ t('interview.remaining').replace('{count}', String(currentQuestion.remainingQuestions ?? 0)) }}</span>
       </div>
       <div class="h-2 overflow-hidden rounded-full bg-muted">
         <div class="h-full rounded-full bg-primary transition-all duration-300" :style="{ width: `${progress}%` }">
@@ -35,7 +34,7 @@
     </div>
 
     <main class="mx-auto flex max-w-5xl flex-col px-4 py-6 sm:px-6 lg:px-8">
-      <BaseCard class="flex min-h-[70vh] flex-col overflow-hidden">
+      <BaseCard class="flex h-[calc(100vh-12rem)] min-h-[520px] flex-col overflow-hidden">
         <div class="border-b border-border/40 p-6">
           <div class="flex flex-wrap items-center justify-between gap-4">
             <div>
@@ -55,7 +54,7 @@
           </div>
         </div>
 
-        <div ref="messagesContainerRef" class="flex-1 space-y-4 overflow-y-auto p-6">
+        <div ref="messagesContainerRef" class="min-h-0 flex-1 space-y-4 overflow-y-auto p-6">
           <div v-for="message in displayMessages" :key="message.id" class="flex gap-3"
             :class="message.type === 'answer' ? 'justify-end' : 'justify-start'">
             <div v-if="message.type !== 'answer'"
@@ -107,10 +106,19 @@
           <textarea
             v-model="textInput"
             :placeholder="t('interview.typeAnswer')"
-            :disabled="status === 'finished' || status === 'connected' || status === 'ready'"
+            :disabled="status === 'finished' || status === 'connected' || status === 'ready' || status === 'evaluating' || Boolean(rateLimitError)"
             rows="3"
             class="mb-4 w-full resize-none rounded-organic border border-border bg-input px-4 py-3 text-sm leading-relaxed outline-none transition focus:border-primary disabled:opacity-50"
           />
+
+          <div v-if="rateLimitError" class="mb-4 rounded-organic border border-warning/20 bg-warning/10 p-4 text-sm text-foreground">
+            <p class="font-semibold">{{ rateLimitError.message }}</p>
+            <div class="mt-3 flex flex-wrap items-center gap-3">
+              <BaseButton size="sm" :disabled="retryCountdown > 0" @click="retryLastAnswer">
+                {{ retryCountdown > 0 ? t('interview.retryIn').replace('{seconds}', String(retryCountdown)) : t('interview.retryAnswer') }}
+              </BaseButton>
+            </div>
+          </div>
 
           <div class="flex flex-wrap items-center justify-center gap-4">
             <BaseButton v-if="canSendReady" @click="startFirstQuestion">
@@ -118,7 +126,7 @@
               {{ t('interview.ready') }}
             </BaseButton>
 
-            <BaseButton v-if="speechRecognitionSupported" :variant="isListening ? 'primary' : 'outline'" size="icon" @click="toggleListening">
+            <BaseButton v-if="speechRecognitionSupported" :disabled="status === 'finished' || status === 'connected' || status === 'ready' || status === 'evaluating' || Boolean(rateLimitError)" :variant="isListening ? 'primary' : 'outline'" size="icon" @click="toggleListening">
               <component :is="isListening ? MicOff : Mic" class="h-5 w-5" />
             </BaseButton>
 
@@ -205,11 +213,13 @@ const {
   interviewResult,
   reconnectAttempts,
   hasReceivedGreeting,
+  rateLimitError,
   connect,
   disconnect,
   sendStart,
   sendReady,
   sendAnswer,
+  retryLastAnswer,
   sendLeave,
   retryConnection,
 } = useInterviewWebSocket()
@@ -232,8 +242,6 @@ const messagesContainerRef = ref<HTMLElement | null>(null)
 const isMuted = ref(false)
 const secondsElapsed = ref(0)
 const timerId = ref<number | null>(null)
-const questionCount = ref(0)
-const maxQuestions = ref(16)
 const textInput = ref('')
 
 function stripThinkingTags(text: string) {
@@ -249,7 +257,7 @@ const displayMessages = computed(() =>
 
 const canSubmitAnswer = computed(() => {
   const hasContent = transcript.value.trim().length > 0 || textInput.value.trim().length > 0
-  return hasContent && status.value === 'started'
+  return hasContent && status.value === 'started' && !rateLimitError.value
 })
 
 const canSendReady = computed(() => hasReceivedGreeting.value && status.value === 'connected' && !currentQuestion.value)
@@ -258,7 +266,13 @@ const showReconnectModal = computed(() => status.value === 'error' && reconnectA
 
 const progress = computed(() => {
   if (!currentQuestion.value?.total) return 0
-  return Math.round(((currentQuestion.value.index ?? questionCount.value) / currentQuestion.value.total) * 100)
+  return Math.round(((currentQuestion.value.index ?? 0) / currentQuestion.value.total) * 100)
+})
+
+const retryCountdown = computed(() => {
+  secondsElapsed.value
+  if (!rateLimitError.value) return 0
+  return Math.max(0, Math.ceil((rateLimitError.value.retryAvailableAt - Date.now()) / 1000))
 })
 
 const timerLabel = computed(() => {
@@ -282,7 +296,6 @@ function submitAnswer() {
   resetTranscript()
   textInput.value = ''
   sendAnswer(answer)
-  questionCount.value += 1
 }
 
 function startFirstQuestion() {

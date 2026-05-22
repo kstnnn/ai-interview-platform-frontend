@@ -4,7 +4,7 @@ import type { STOMPEvent, InterviewResult, InterviewTopicResult } from '@/types/
 
 const WS_BASE_URL = import.meta.env.VITE_INTERVIEW_WS_URL ?? 'ws://localhost:8081/ws'
 
-export type InterviewStatus = 'idle' | 'connecting' | 'connected' | 'started' | 'ready' | 'finished' | 'error' | 'reconnecting'
+export type InterviewStatus = 'idle' | 'connecting' | 'connected' | 'started' | 'ready' | 'evaluating' | 'finished' | 'error' | 'reconnecting'
 
 export type InterviewMessage = {
   id: string
@@ -23,6 +23,8 @@ const messages = ref<InterviewMessage[]>([])
 const currentQuestion = ref<{ text: string; index?: number; total?: number } | null>(null)
 const interviewResult = ref<InterviewResult | null>(null)
 const reconnectAttempts = ref(0)
+const hasReceivedGreeting = ref(false)
+const latestAnswerScore = ref<number | null>(null)
 
 let stompClient: Client | null = null
 let currentSessionId = ''
@@ -34,6 +36,11 @@ const MAX_RECONNECT_ATTEMPTS = 3
 const RECONNECT_DELAY = 2000
 
 function addMessage(msg: Omit<InterviewMessage, 'id' | 'timestamp'>) {
+  const lastMessage = messages.value.at(-1)
+  if (lastMessage?.type !== 'answer' && lastMessage?.text.trim() === msg.text.trim()) {
+    return
+  }
+
   messages.value.push({
     ...msg,
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -49,48 +56,31 @@ function parseEvent(raw: string): STOMPEvent | null {
   }
 }
 
-function sendReadyInternal() {
-  if (!stompClient || !stompClient.connected) return
-  stompClient.publish({
-    destination: `/app/interviews/${currentSessionId}/ready`,
-    body: JSON.stringify({}),
-  })
-}
-
 function handleEvent(event: STOMPEvent) {
   switch (event.type) {
     case 'GREETING': {
       const text = (event.payload.text as string) || 'Welcome to the interview.'
       addMessage({ type: 'system', text })
+      hasReceivedGreeting.value = true
       status.value = 'connected'
-      console.log('[GREETING] Status set to:', status.value, '— sending /ready')
-      sendReadyInternal()
       break
     }
     case 'QUESTION_ASKED': {
-      console.log('[QUESTION_ASKED] Full payload:', JSON.stringify(event.payload))
       const text = (event.payload.question as string) || (event.payload.text as string) || ''
-      const index = (event.payload.index as number) ?? ++questionIndex
+      const index = (event.payload.roundNumber as number) ?? (event.payload.index as number) ?? ++questionIndex
       const total = (event.payload.total as number) ?? undefined
+      const questionType = event.payload.questionType as string | undefined
       currentSessionQuestionId.value = (event.payload.sessionQuestionId as string) ?? ''
-      console.log('[QUESTION_ASKED] sessionQuestionId:', currentSessionQuestionId.value)
       currentQuestion.value = { text, index, total }
-      addMessage({ type: 'question', text, metadata: { index, total } })
+      addMessage({ type: 'question', text, metadata: { index, total, questionType, sessionQuestionId: currentSessionQuestionId.value } })
       status.value = 'started'
-      console.log('[QUESTION_ASKED] Status set to:', status.value)
       break
     }
     case 'ANSWER_EVALUATED': {
-      const text = (event.payload.evaluation as string) || (event.payload.feedback as string) || 'Answer received.'
-      const score = event.payload.score as number | undefined
-      addMessage({ type: 'evaluation', text, metadata: { score } })
+      latestAnswerScore.value = (event.payload.totalScore as number | undefined) ?? (event.payload.score as number | undefined) ?? null
       break
     }
     case 'FEEDBACK': {
-      const text = (event.payload.text as string) || (event.payload.message as string) || ''
-      if (text) {
-        addMessage({ type: 'feedback', text })
-      }
       break
     }
     case 'SESSION_FINISHED': {
@@ -111,6 +101,7 @@ function handleEvent(event: STOMPEvent) {
       }
 
       addMessage({ type: 'system', text: 'Interview finished. Redirecting to results...' })
+      window.sessionStorage.removeItem(`interviewStarted_${currentSessionId}`)
       status.value = 'finished'
       break
     }
@@ -187,8 +178,10 @@ export function useInterviewWebSocket() {
   function connect(sessionId: string, token: string) {
     currentSessionId = sessionId
     questionIndex = 0
-    hasSentStart = false
+    hasSentStart = window.sessionStorage.getItem(`interviewStarted_${sessionId}`) === 'true'
+    hasReceivedGreeting.value = false
     currentSessionQuestionId.value = ''
+    latestAnswerScore.value = null
     messages.value = []
     currentQuestion.value = null
     interviewResult.value = null
@@ -223,6 +216,7 @@ export function useInterviewWebSocket() {
     if (!stompClient || !stompClient.connected) return
     if (hasSentStart) return
     hasSentStart = true
+    window.sessionStorage.setItem(`interviewStarted_${currentSessionId}`, 'true')
     stompClient.publish({
       destination: `/app/interviews/${currentSessionId}/start`,
       body: JSON.stringify({
@@ -236,6 +230,7 @@ export function useInterviewWebSocket() {
 
   function sendReady() {
     if (!stompClient || !stompClient.connected) return
+    status.value = 'ready'
     stompClient.publish({
       destination: `/app/interviews/${currentSessionId}/ready`,
       body: JSON.stringify({}),
@@ -245,12 +240,17 @@ export function useInterviewWebSocket() {
   function sendAnswer(answer: string) {
     if (!stompClient || !stompClient.connected) return
     if (!currentSessionQuestionId.value) {
-      console.warn('[useInterviewWebSocket] No sessionQuestionId available — answer may be rejected by backend.')
+      error.value = 'No active question is available yet.'
+      addMessage({ type: 'error', text: 'Wait for the next question before submitting an answer.' })
+      return
     }
+    const answeredQuestionId = currentSessionQuestionId.value
+    currentSessionQuestionId.value = ''
+    status.value = 'evaluating'
     stompClient.publish({
       destination: `/app/interviews/${currentSessionId}/answers`,
       body: JSON.stringify({
-        sessionQuestionId: currentSessionQuestionId.value,
+        sessionQuestionId: answeredQuestionId,
         answerText: answer,
       }),
     })
@@ -291,9 +291,12 @@ export function useInterviewWebSocket() {
     interviewResult: readonly(interviewResult),
     reconnectAttempts: readonly(reconnectAttempts),
     currentSessionQuestionId: readonly(currentSessionQuestionId),
+    hasReceivedGreeting: readonly(hasReceivedGreeting),
+    latestAnswerScore: readonly(latestAnswerScore),
     connect,
     disconnect,
     sendStart,
+    sendReady,
     sendAnswer,
     sendLeave,
     retryConnection,

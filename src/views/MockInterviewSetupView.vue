@@ -113,7 +113,7 @@ const AVAILABLE_TECHNOLOGIES = [
 ] as const
 
 const router = useRouter()
-const { t } = useI18n()
+const { locale, t } = useI18n()
 const { userId } = useAppSession()
 
 const isCreating = ref(false)
@@ -125,6 +125,8 @@ const form = reactive({
   minQuestions: 8,
   maxQuestions: 16,
 })
+
+const interviewLanguage = computed(() => (locale.value === 'ru' ? 'Russian' : 'English'))
 
 function toggleTechnology(tech: string) {
   const idx = form.technologies.indexOf(tech)
@@ -151,12 +153,13 @@ async function createInterview() {
       minQuestions: form.minQuestions,
       maxQuestions: form.maxQuestions,
       interviewLevel: form.interviewLevel,
+      interviewLanguage: interviewLanguage.value,
       technologyKeys: form.technologies,
     })
 
     await router.push({
       path: `/candidate/interview/${response.sessionId}`,
-      query: { techs: form.technologies.join(','), level: form.interviewLevel },
+      query: { techs: form.technologies.join(','), level: form.interviewLevel, lang: interviewLanguage.value },
     })
   } catch (err: any) {
     apiError.value = err?.message || 'Failed to create interview. Please try again.'

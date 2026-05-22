@@ -107,12 +107,17 @@
           <textarea
             v-model="textInput"
             :placeholder="t('interview.typeAnswer')"
-            :disabled="status === 'finished'"
+            :disabled="status === 'finished' || status === 'connected' || status === 'ready'"
             rows="3"
             class="mb-4 w-full resize-none rounded-organic border border-border bg-input px-4 py-3 text-sm leading-relaxed outline-none transition focus:border-primary disabled:opacity-50"
           />
 
           <div class="flex flex-wrap items-center justify-center gap-4">
+            <BaseButton v-if="canSendReady" @click="startFirstQuestion">
+              <Play class="h-4 w-4" />
+              {{ t('interview.ready') }}
+            </BaseButton>
+
             <BaseButton v-if="speechRecognitionSupported" :variant="isListening ? 'primary' : 'outline'" size="icon" @click="toggleListening">
               <component :is="isListening ? MicOff : Mic" class="h-5 w-5" />
             </BaseButton>
@@ -183,6 +188,11 @@ const technologyKeys = computed(() => {
 const interviewLevel = computed(() => (route.query.level as string) ?? 'MIDDLE')
 const { displayName } = useAppSession()
 const { locale } = useI18n()
+const interviewLanguage = computed(() => {
+  const lang = route.query.lang
+  if (lang === 'Russian' || lang === 'English') return lang
+  return locale.value === 'ru' ? 'Russian' : 'English'
+})
 
 const {
   isConnected,
@@ -194,9 +204,11 @@ const {
   currentQuestion,
   interviewResult,
   reconnectAttempts,
+  hasReceivedGreeting,
   connect,
   disconnect,
   sendStart,
+  sendReady,
   sendAnswer,
   sendLeave,
   retryConnection,
@@ -240,6 +252,8 @@ const canSubmitAnswer = computed(() => {
   return hasContent && status.value === 'started'
 })
 
+const canSendReady = computed(() => hasReceivedGreeting.value && status.value === 'connected' && !currentQuestion.value)
+
 const showReconnectModal = computed(() => status.value === 'error' && reconnectAttempts.value >= 3)
 
 const progress = computed(() => {
@@ -269,6 +283,12 @@ function submitAnswer() {
   textInput.value = ''
   sendAnswer(answer)
   questionCount.value += 1
+}
+
+function startFirstQuestion() {
+  textInput.value = ''
+  resetTranscript()
+  sendReady()
 }
 
 function toggleListening() {
@@ -345,7 +365,7 @@ onMounted(async () => {
           candidateName: displayName.value,
           technologies: technologyKeys.value,
           interviewLevel: interviewLevel.value,
-          interviewLanguage: locale.value,
+          interviewLanguage: interviewLanguage.value,
         })
       }, 500)
     }

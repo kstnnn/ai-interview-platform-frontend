@@ -23,12 +23,14 @@ export type UserResponse = {
 }
 
 export type InterviewLevel = 'JUNIOR' | 'MIDDLE' | 'SENIOR'
+export type InterviewLanguage = 'Russian' | 'English'
 
 export type CreateInterviewRequest = {
   userId: string
   minQuestions: number
   maxQuestions: number
   interviewLevel: InterviewLevel
+  interviewLanguage: InterviewLanguage
   technologyKeys: string[]
 }
 
@@ -36,6 +38,7 @@ export type CreateInterviewResponse = {
   sessionId: string
   status: 'CREATED' | 'IN_PROGRESS' | 'FINISHED'
   interviewLevel: InterviewLevel
+  interviewLanguage?: InterviewLanguage
   minQuestions: number
   maxQuestions: number
   technologyKeys: string[]

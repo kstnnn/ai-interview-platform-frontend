@@ -36,13 +36,27 @@ export type CreateInterviewRequest = {
 
 export type CreateInterviewResponse = {
   sessionId: string
-  status: 'CREATED' | 'IN_PROGRESS' | 'FINISHED'
+  status: 'CREATED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'FINISHED'
   interviewLevel: InterviewLevel
   interviewLanguage?: InterviewLanguage
   minQuestions: number
   maxQuestions: number
   technologyKeys: string[]
   createdAt: string
+}
+
+export type InterviewSessionStatus = 'CREATED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
+
+export type InterviewSessionSummary = {
+  sessionId: string
+  status: InterviewSessionStatus
+  interviewLevel: InterviewLevel
+  interviewLanguage: InterviewLanguage
+  technologyKeys: string[]
+  sessionConfidence: number | null
+  startedAt: string | null
+  finishedAt: string | null
+  questionsAsked: number
 }
 
 export type STOMPEventType = 'GREETING' | 'QUESTION_ASKED' | 'ANSWER_EVALUATED' | 'FEEDBACK' | 'SESSION_FINISHED' | 'ERROR'

@@ -1,147 +1,228 @@
 <template>
-  <div v-if="session" class="min-h-screen bg-background">
+  <div v-if="!showReconnectModal" class="min-h-screen bg-background">
     <header class="sticky top-0 z-50 border-b border-border/30 bg-background/90 backdrop-blur-md">
       <div class="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
         <div>
-          <h1 class="font-serif text-lg font-bold text-foreground">{{ session.position }} Interview</h1>
-          <p class="text-sm text-muted-foreground">Question {{ currentQuestionIndex + 1 }} of {{ totalQuestions }}</p>
+          <h1 class="font-serif text-lg font-bold text-foreground">{{ t('interview.title') }}</h1>
+          <p v-if="currentQuestion" class="text-sm text-muted-foreground">
+            {{ t('interview.questionOf').replace('{current}', String(currentQuestion.index ?? 0)).replace('{total}', String(currentQuestion.total ?? 0)) }}
+          </p>
+          <p v-else-if="status === 'connecting'" class="text-sm text-muted-foreground">{{ t('interview.connecting') }}
+          </p>
+          <p v-else-if="status === 'reconnecting'" class="text-sm text-warning">{{ t('interview.reconnecting') }}</p>
         </div>
 
         <div class="flex items-center gap-3">
-          <div class="rounded-full border border-primary/20 bg-primary/10 px-4 py-2 font-mono text-sm font-semibold text-foreground">
+          <div v-if="secondsElapsed > 0"
+            class="rounded-full border border-primary/20 bg-primary/10 px-4 py-2 font-mono text-sm font-semibold text-foreground">
             {{ timerLabel }}
           </div>
-          <BaseButton variant="outline" size="sm" @click="finishInterview">End</BaseButton>
+          <BaseButton variant="outline" size="sm" @click="leaveInterview">{{ t('interview.leave') }}</BaseButton>
         </div>
       </div>
     </header>
 
-    <div class="mx-auto max-w-5xl px-4 pt-4 sm:px-6 lg:px-8">
+    <div v-if="currentQuestion" class="mx-auto max-w-5xl px-4 pt-4 sm:px-6 lg:px-8">
       <div class="mb-2 flex items-center justify-between text-sm">
-        <span class="font-medium text-foreground">Interview Progress</span>
-        <span class="text-muted-foreground">{{ Math.round(progress) }}%</span>
+        <span class="font-medium text-foreground">{{ t('interview.progress') }}</span>
+        <span class="text-muted-foreground">{{ progress }}% · {{ t('interview.remaining').replace('{count}', String(currentQuestion.remainingQuestions ?? 0)) }}</span>
       </div>
       <div class="h-2 overflow-hidden rounded-full bg-muted">
-        <div class="h-full rounded-full bg-primary transition-all duration-300" :style="{ width: `${progress}%` }"></div>
+        <div class="h-full rounded-full bg-primary transition-all duration-300" :style="{ width: `${progress}%` }">
+        </div>
       </div>
     </div>
 
     <main class="mx-auto flex max-w-5xl flex-col px-4 py-6 sm:px-6 lg:px-8">
-      <BaseCard class="flex min-h-[70vh] flex-col overflow-hidden">
+      <BaseCard class="flex h-[calc(100vh-12rem)] min-h-[520px] flex-col overflow-hidden">
         <div class="border-b border-border/40 p-6">
           <div class="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h2 class="font-serif text-2xl font-bold text-foreground">Voice Interview Demo</h2>
-              <p class="mt-1 text-sm text-muted-foreground">
-                This screen now runs locally in the browser with scripted interviewer prompts.
-              </p>
+              <h2 class="font-serif text-2xl font-bold text-foreground">{{ t('interview.voiceTitle') }}</h2>
+              <p class="mt-1 text-sm text-muted-foreground">{{ t('interview.voiceDesc') }}</p>
             </div>
             <div class="flex gap-3">
               <BaseButton variant="outline" size="sm" @click="toggleMute">
                 <component :is="isMuted ? VolumeX : Volume2" class="h-4 w-4" />
-                {{ isMuted ? 'Unmute' : 'Mute' }}
+                {{ isMuted ? t('interview.unmute') : t('interview.mute') }}
               </BaseButton>
-              <BaseButton variant="outline" size="sm" @click="speakCurrentQuestion">
+              <BaseButton v-if="currentQuestion" variant="outline" size="sm" @click="speakText(currentQuestion.text)">
                 <Play class="h-4 w-4" />
-                Replay prompt
+                {{ t('interview.replay') }}
               </BaseButton>
             </div>
           </div>
         </div>
 
-        <div ref="messagesContainerRef" class="flex-1 space-y-4 overflow-y-auto p-6">
-          <div
-            v-for="message in messages"
-            :key="message.id"
-            class="flex gap-3"
-            :class="message.role === 'user' ? 'justify-end' : 'justify-start'"
-          >
-            <div
-              v-if="message.role === 'assistant'"
-              class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-organic bg-primary/10 text-primary shadow-soft"
-            >
-              <Bot class="h-5 w-5" />
+        <div ref="messagesContainerRef" class="min-h-0 flex-1 space-y-4 overflow-y-auto p-6">
+          <div v-for="message in displayMessages" :key="message.id" class="flex gap-3"
+            :class="message.type === 'answer' ? 'justify-end' : 'justify-start'">
+            <div v-if="message.type !== 'answer'"
+              class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-organic text-primary shadow-soft"
+              :class="message.type === 'error' ? 'bg-destructive/10 text-destructive' : 'bg-primary/10'">
+              <component :is="message.type === 'error' ? AlertCircle : message.type === 'system' ? Info : Bot"
+                class="h-5 w-5" />
             </div>
-            <div
-              class="max-w-[75%] rounded-organic px-5 py-3 text-sm leading-relaxed shadow-soft"
-              :class="message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'"
-            >
+
+            <div class="max-w-[75%] rounded-organic px-5 py-3 text-sm leading-relaxed shadow-soft" :class="{
+              'bg-primary text-primary-foreground': message.type === 'answer',
+              'bg-destructive/10 text-destructive': message.type === 'error',
+              'bg-secondary text-secondary-foreground': message.type === 'system',
+              'bg-muted/60 text-muted-foreground': message.type === 'evaluation' || message.type === 'feedback',
+              'bg-background text-foreground': message.type === 'question',
+            }">
               {{ message.text }}
             </div>
-            <div
-              v-if="message.role === 'user'"
-              class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-organic bg-accent text-accent-foreground shadow-soft"
-            >
+
+            <div v-if="message.type === 'answer'"
+              class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-organic bg-accent text-accent-foreground shadow-soft">
               <User class="h-5 w-5" />
             </div>
           </div>
 
           <div v-if="transcript || interimTranscript" class="flex justify-end gap-3">
-            <div class="max-w-[75%] rounded-organic bg-primary px-5 py-3 text-sm leading-relaxed text-primary-foreground shadow-soft">
+            <div
+              class="max-w-[75%] rounded-organic bg-primary px-5 py-3 text-sm leading-relaxed text-primary-foreground shadow-soft">
               {{ transcript }}
               <span v-if="interimTranscript" class="opacity-70"> {{ interimTranscript }}</span>
             </div>
-            <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-organic bg-accent text-accent-foreground shadow-soft">
+            <div
+              class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-organic bg-accent text-accent-foreground shadow-soft">
               <User class="h-5 w-5" />
             </div>
           </div>
         </div>
 
         <div class="border-t border-border/30 bg-background/60 p-6">
-          <div v-if="voiceError" class="mb-4 rounded-organic border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">
+          <div v-if="voiceError"
+            class="mb-4 rounded-organic border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">
             {{ voiceError }}
           </div>
-          <div v-if="!speechRecognitionSupported || !speechSynthesisSupported" class="mb-4 rounded-organic border border-warning/20 bg-warning/10 p-4 text-sm text-foreground">
-            Voice features depend on browser support. Text flow still works visually if your browser lacks some APIs.
+          <div v-if="!speechRecognitionSupported || !speechSynthesisSupported"
+            class="mb-4 rounded-organic border border-warning/20 bg-warning/10 p-4 text-sm text-foreground">
+            {{ t('interview.voiceUnsupported') }}
+          </div>
+
+          <textarea
+            v-model="textInput"
+            :placeholder="t('interview.typeAnswer')"
+            :disabled="status === 'finished' || status === 'connected' || status === 'ready' || status === 'evaluating' || Boolean(rateLimitError)"
+            rows="3"
+            class="mb-4 w-full resize-none rounded-organic border border-border bg-input px-4 py-3 text-sm leading-relaxed outline-none transition focus:border-primary disabled:opacity-50"
+          />
+
+          <div v-if="rateLimitError" class="mb-4 rounded-organic border border-warning/20 bg-warning/10 p-4 text-sm text-foreground">
+            <p class="font-semibold">{{ rateLimitError.message }}</p>
+            <div class="mt-3 flex flex-wrap items-center gap-3">
+              <BaseButton size="sm" :disabled="retryCountdown > 0" @click="retryLastAnswer">
+                {{ retryCountdown > 0 ? t('interview.retryIn').replace('{seconds}', String(retryCountdown)) : t('interview.retryAnswer') }}
+              </BaseButton>
+            </div>
           </div>
 
           <div class="flex flex-wrap items-center justify-center gap-4">
-            <BaseButton :variant="isListening ? 'primary' : 'outline'" size="icon" @click="toggleListening">
+            <BaseButton v-if="canSendReady" @click="startFirstQuestion">
+              <Play class="h-4 w-4" />
+              {{ t('interview.ready') }}
+            </BaseButton>
+
+            <BaseButton v-if="speechRecognitionSupported" :disabled="status === 'finished' || status === 'connected' || status === 'ready' || status === 'evaluating' || Boolean(rateLimitError)" :variant="isListening ? 'primary' : 'outline'" size="icon" @click="toggleListening">
               <component :is="isListening ? MicOff : Mic" class="h-5 w-5" />
             </BaseButton>
 
-            <BaseButton :disabled="!canSubmitAnswer" @click="submitAnswer">
+            <BaseButton :disabled="!canSubmitAnswer || status === 'finished'" @click="submitAnswer">
               <Send class="h-4 w-4" />
-              Submit answer
+              {{ t('interview.submitAnswer') }}
             </BaseButton>
           </div>
         </div>
       </BaseCard>
     </main>
+
+    <div v-if="status === 'finished'"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+      <BaseCard class="max-w-md p-8 text-center">
+        <CircleCheck class="mx-auto h-12 w-12 text-success" />
+        <h2 class="mt-4 text-2xl font-bold text-foreground">{{ t('interview.finishedTitle') }}</h2>
+        <p class="mt-2 text-muted-foreground">{{ t('interview.finishedDesc') }}</p>
+        <BaseButton class="mt-6" size="lg" @click="goToResults">
+          {{ t('interview.viewResults') }}
+        </BaseButton>
+      </BaseCard>
+    </div>
   </div>
 
-  <div v-else class="flex min-h-screen items-center justify-center px-4 text-center">
-    <BaseCard class="max-w-md p-8">
-      <h1 class="text-2xl font-bold text-foreground">Session not found</h1>
-      <p class="mt-3 text-muted-foreground">The current frontend demo only has a few local sessions configured.</p>
-      <RouterLink to="/candidate/join" class="mt-6 inline-block">
-        <BaseButton>Back to Join</BaseButton>
-      </RouterLink>
+  <div v-if="showReconnectModal"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+    <BaseCard class="max-w-md p-8 text-center">
+      <AlertTriangle class="mx-auto h-12 w-12 text-warning" />
+      <h2 class="mt-4 text-2xl font-bold text-foreground">{{ t('interview.connectionLost') }}</h2>
+      <p class="mt-2 text-muted-foreground">{{ t('interview.connectionLostDesc') }}</p>
+      <div class="mt-6 flex flex-col gap-3 sm:flex-row">
+        <BaseButton class="flex-1" size="lg" @click="retryConnection">
+          {{ t('interview.retry') }}
+        </BaseButton>
+        <BaseButton class="flex-1" variant="outline" size="lg" @click="leaveInterview">
+          {{ t('interview.leave') }}
+        </BaseButton>
+      </div>
     </BaseCard>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter, RouterLink } from 'vue-router'
-import { Bot, Mic, MicOff, Play, Send, User, Volume2, VolumeX } from 'lucide-vue-next'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { AlertCircle, AlertTriangle, Bot, CircleCheck, Info, Mic, MicOff, Play, Send, User, Volume2, VolumeX } from 'lucide-vue-next'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseCard from '@/components/BaseCard.vue'
 import { useVoiceInterview } from '@/composables/useVoiceInterview'
-import { getSessionById, scriptedInterviewQuestions } from '@/data/mock-data'
-import type { ChatMessage } from '@/types/interview'
+import { useInterviewWebSocket } from '@/composables/useInterviewWebSocket'
+import { useAppSession } from '@/composables/useAppSession'
+import { getAccessToken } from '@/auth/zitadel'
+import { useI18n } from '@/i18n'
 
 const route = useRoute()
 const router = useRouter()
-const session = computed(() => getSessionById(String(route.params.sessionId ?? '')))
-const totalQuestions = scriptedInterviewQuestions.length
+const { t } = useI18n()
+const sessionId = String(route.params.sessionId ?? '')
+const technologyKeys = computed(() => {
+  const raw = route.query.techs
+  if (typeof raw === 'string' && raw.length > 0) {
+    return raw.split(',').filter(Boolean)
+  }
+  return []
+})
+const interviewLevel = computed(() => (route.query.level as string) ?? 'MIDDLE')
+const { displayName } = useAppSession()
+const { locale } = useI18n()
+const interviewLanguage = computed(() => {
+  const lang = route.query.lang
+  if (lang === 'Russian' || lang === 'English') return lang
+  return locale.value === 'ru' ? 'Russian' : 'English'
+})
 
-const messages = ref<ChatMessage[]>([])
-const currentQuestionIndex = ref(0)
-const secondsElapsed = ref(0)
-const timerId = ref<number | null>(null)
-const isMuted = ref(false)
-const messagesContainerRef = ref<HTMLElement | null>(null)
+const {
+  isConnected,
+  isConnecting,
+  isReconnecting,
+  status,
+  error: wsError,
+  messages,
+  currentQuestion,
+  interviewResult,
+  reconnectAttempts,
+  hasReceivedGreeting,
+  rateLimitError,
+  connect,
+  disconnect,
+  sendStart,
+  sendReady,
+  sendAnswer,
+  retryLastAnswer,
+  sendLeave,
+  retryConnection,
+} = useInterviewWebSocket()
 
 const {
   transcript,
@@ -157,57 +238,70 @@ const {
   cancelSpeech,
 } = useVoiceInterview()
 
-const progress = computed(() => ((currentQuestionIndex.value + 1) / totalQuestions) * 100)
-const canSubmitAnswer = computed(() => transcript.value.trim().length > 0)
+const messagesContainerRef = ref<HTMLElement | null>(null)
+const isMuted = ref(false)
+const secondsElapsed = ref(0)
+const timerId = ref<number | null>(null)
+const textInput = ref('')
+
+function stripThinkingTags(text: string) {
+  const pattern = new RegExp('<think>[\\s\\S]*?</think>', 'g')
+  return text.replace(pattern, '').trim()
+}
+
+const displayMessages = computed(() =>
+  messages.value
+    .filter((m) => m.type !== 'system' || m.text)
+    .map((m) => ({ ...m, text: stripThinkingTags(m.text) }))
+)
+
+const canSubmitAnswer = computed(() => {
+  const hasContent = transcript.value.trim().length > 0 || textInput.value.trim().length > 0
+  return hasContent && status.value === 'started' && !rateLimitError.value
+})
+
+const canSendReady = computed(() => hasReceivedGreeting.value && status.value === 'connected' && !currentQuestion.value)
+
+const showReconnectModal = computed(() => status.value === 'error' && reconnectAttempts.value >= 3)
+
+const progress = computed(() => {
+  if (!currentQuestion.value?.total) return 0
+  return Math.round(((currentQuestion.value.index ?? 0) / currentQuestion.value.total) * 100)
+})
+
+const retryCountdown = computed(() => {
+  secondsElapsed.value
+  if (!rateLimitError.value) return 0
+  return Math.max(0, Math.ceil((rateLimitError.value.retryAvailableAt - Date.now()) / 1000))
+})
+
 const timerLabel = computed(() => {
   const minutes = Math.floor(secondsElapsed.value / 60)
   const seconds = secondsElapsed.value % 60
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 })
 
-function addAssistantMessage(text: string) {
-  messages.value.push({
-    id: `assistant-${Date.now()}-${messages.value.length}`,
-    role: 'assistant',
-    text,
-  })
-
+function speakText(text: string) {
+  cancelSpeech()
   if (!isMuted.value) {
     speak(text)
   }
 }
 
-function addUserMessage(text: string) {
-  messages.value.push({
-    id: `user-${Date.now()}-${messages.value.length}`,
-    role: 'user',
-    text,
-  })
-}
-
-function askCurrentQuestion() {
-  addAssistantMessage(scriptedInterviewQuestions[currentQuestionIndex.value])
-}
-
 function submitAnswer() {
-  const answer = transcript.value.trim()
-  if (!answer) {
-    return
-  }
+  const answer = textInput.value.trim() || transcript.value.trim()
+  if (!answer) return
 
   stopListening()
-  addUserMessage(answer)
   resetTranscript()
+  textInput.value = ''
+  sendAnswer(answer)
+}
 
-  if (currentQuestionIndex.value === totalQuestions - 1) {
-    finishInterview()
-    return
-  }
-
-  currentQuestionIndex.value += 1
-  window.setTimeout(() => {
-    askCurrentQuestion()
-  }, 350)
+function startFirstQuestion() {
+  textInput.value = ''
+  resetTranscript()
+  sendReady()
 }
 
 function toggleListening() {
@@ -224,24 +318,20 @@ function toggleMute() {
   if (!isMuted.value) {
     cancelSpeech()
   }
-
   isMuted.value = !isMuted.value
 }
 
-function speakCurrentQuestion() {
-  cancelSpeech()
-  if (!isMuted.value) {
-    speak(scriptedInterviewQuestions[currentQuestionIndex.value])
-  }
+function leaveInterview() {
+  sendLeave()
+  disconnect()
+  void router.push('/user')
 }
 
-function finishInterview() {
-  stopListening()
-  cancelSpeech()
-  if (timerId.value !== null) {
-    window.clearInterval(timerId.value)
+function goToResults() {
+  if (interviewResult.value) {
+    localStorage.setItem(`interviewResult_${sessionId}`, JSON.stringify(interviewResult.value))
   }
-  void router.push(`/results/${route.params.sessionId}`)
+  void router.push(`/results/${sessionId}`)
 }
 
 watch(
@@ -256,24 +346,42 @@ watch(
   { deep: true },
 )
 
-onMounted(() => {
-  if (!session.value) {
+watch(status, (newStatus) => {
+  if (newStatus === 'finished') {
+    if (timerId.value !== null) {
+      window.clearInterval(timerId.value)
+    }
+    if (interviewResult.value) {
+      localStorage.setItem(`interviewResult_${sessionId}`, JSON.stringify(interviewResult.value))
+    }
+  }
+})
+
+onMounted(async () => {
+  const token = await getAccessToken()
+  if (!token) {
+    void router.push('/sign-in')
     return
   }
+
+  connect(sessionId, token)
 
   timerId.value = window.setInterval(() => {
     secondsElapsed.value += 1
   }, 1000)
 
-  addAssistantMessage(`Hello ${session.value.candidateName}. Welcome to your ${session.value.position} interview.`)
-  window.setTimeout(() => {
-    askCurrentQuestion()
-  }, 700)
-})
-
-onBeforeUnmount(() => {
-  if (timerId.value !== null) {
-    window.clearInterval(timerId.value)
-  }
+  const unwatch = watch(isConnected, (connected) => {
+    if (connected) {
+      unwatch()
+      window.setTimeout(() => {
+        sendStart({
+          candidateName: displayName.value,
+          technologies: technologyKeys.value,
+          interviewLevel: interviewLevel.value,
+          interviewLanguage: interviewLanguage.value,
+        })
+      }, 500)
+    }
+  })
 })
 </script>

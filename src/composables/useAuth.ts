@@ -12,23 +12,30 @@ import {
   signUp,
   userManager,
 } from '@/auth/zitadel'
+import type { UserResponse } from '@/types/api'
+import { loadAppSession, resetAppSession } from '@/composables/useAppSession'
 
-const user = ref<User | null>(null)
+const zitadelUser = ref<User | null>(null)
+const appUser = ref<UserResponse | null>(null)
 const isLoading = ref(false)
 const error = ref('')
+const needsRegistration = ref(false)
 let initialized = false
 
 userManager.events.addUserLoaded((loadedUser) => {
-  user.value = loadedUser
+  zitadelUser.value = loadedUser
 })
 
 userManager.events.addUserUnloaded(() => {
-  user.value = null
+  zitadelUser.value = null
+  appUser.value = null
+  needsRegistration.value = false
 })
 
 export function useAuth() {
-  const isAuthenticated = computed(() => Boolean(user.value && !user.value.expired))
-  const displayName = computed(() => getDisplayName(user.value))
+  const isAuthenticated = computed(() => Boolean(zitadelUser.value && !zitadelUser.value.expired))
+  const displayName = computed(() => getDisplayName(zitadelUser.value))
+  const isRegistered = computed(() => Boolean(appUser.value))
 
   async function initialize() {
     if (initialized) return
@@ -37,11 +44,36 @@ export function useAuth() {
     error.value = ''
 
     try {
-      user.value = await getCurrentUser()
+      zitadelUser.value = await getCurrentUser()
+      if (zitadelUser.value) {
+        await resolveAppSession()
+      }
     } catch (caughtError) {
       error.value = caughtError instanceof Error ? caughtError.message : 'Failed to load auth state.'
     } finally {
       isLoading.value = false
+    }
+  }
+
+  async function resolveAppSession() {
+    if (!zitadelUser.value) return
+
+    const sub = zitadelUser.value.profile.sub
+    if (!sub) {
+      needsRegistration.value = true
+      return
+    }
+
+    try {
+      await loadAppSession(sub)
+      needsRegistration.value = false
+    } catch (caughtError: any) {
+      if (caughtError?.code === 'USER_NOT_FOUND' || caughtError?.status === 404) {
+        needsRegistration.value = true
+      } else {
+        error.value = caughtError instanceof Error ? caughtError.message : 'Failed to load your profile.'
+        throw caughtError
+      }
     }
   }
 
@@ -67,8 +99,9 @@ export function useAuth() {
     isLoading.value = true
     error.value = ''
     try {
-      user.value = await handleAuthCallback()
-      return user.value
+      zitadelUser.value = await handleAuthCallback()
+      await resolveAppSession()
+      return zitadelUser.value
     } catch (caughtError) {
       if (isStateNotFoundError(caughtError)) {
         error.value = 'Session state was lost during redirect. This usually happens when the login was started from a different URL than the callback. Restarting login...'
@@ -85,6 +118,7 @@ export function useAuth() {
   async function logout() {
     error.value = ''
     try {
+      resetAppSession()
       await signOut()
     } catch (caughtError) {
       error.value = caughtError instanceof Error ? caughtError.message : 'Failed to sign out.'
@@ -95,8 +129,11 @@ export function useAuth() {
     isLoading.value = true
     error.value = ''
     try {
+      resetAppSession()
       await handleLogoutCallback()
-      user.value = null
+      zitadelUser.value = null
+      appUser.value = null
+      needsRegistration.value = false
     } catch (caughtError) {
       error.value = caughtError instanceof Error ? caughtError.message : 'Failed to complete sign out.'
       throw caughtError
@@ -106,12 +143,14 @@ export function useAuth() {
   }
 
   return {
-    user: readonly(user),
+    user: readonly(zitadelUser),
     isLoading: readonly(isLoading),
     error: readonly(error),
     isAuthenticated,
     displayName,
     isZitadelConfigured,
+    needsRegistration: readonly(needsRegistration),
+    isRegistered,
     initialize,
     login,
     register,

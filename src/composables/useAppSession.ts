@@ -1,41 +1,50 @@
 import { computed, readonly, ref } from 'vue'
-import { completeOnboarding, getMe, type AppAccountType, type CompleteOnboardingPayload, type MeResponse } from '@/api/me'
+import { getUserByProviderId, createUser } from '@/api/user'
+import type { UserResponse, CreateUserRequest, UserType } from '@/types/api'
 
-const me = ref<MeResponse | null>(null)
+const user = ref<UserResponse | null>(null)
+const providerUserId = ref('')
 const isLoading = ref(false)
 const error = ref('')
 let loaded = false
 
-export async function loadAppSession(force = false) {
-  if (loaded && !force) {
-    return me.value
+export async function loadAppSession(sub: string, force = false) {
+  if (loaded && !force && providerUserId.value === sub) {
+    return user.value
   }
 
   isLoading.value = true
   error.value = ''
 
   try {
-    me.value = await getMe()
+    user.value = await getUserByProviderId(sub)
+    providerUserId.value = sub
     loaded = true
-    return me.value
+    return user.value
   } catch (caughtError) {
-    error.value = caughtError instanceof Error ? caughtError.message : 'Failed to load your app profile.'
+    if (caughtError instanceof Error && 'status' in caughtError && (caughtError as any).status === 404) {
+      loaded = true
+      providerUserId.value = sub
+      throw Object.assign(new Error('User not found'), { status: 404, code: 'USER_NOT_FOUND' })
+    }
+    error.value = caughtError instanceof Error ? caughtError.message : 'Failed to load your profile.'
     throw caughtError
   } finally {
     isLoading.value = false
   }
 }
 
-export async function completeAppOnboarding(payload: CompleteOnboardingPayload) {
+export async function registerUser(payload: CreateUserRequest) {
   isLoading.value = true
   error.value = ''
 
   try {
-    me.value = await completeOnboarding(payload)
+    user.value = await createUser(payload)
+    providerUserId.value = payload.providerUserId
     loaded = true
-    return me.value
+    return user.value
   } catch (caughtError) {
-    error.value = caughtError instanceof Error ? caughtError.message : 'Failed to complete onboarding.'
+    error.value = caughtError instanceof Error ? caughtError.message : 'Failed to create your account.'
     throw caughtError
   } finally {
     isLoading.value = false
@@ -43,33 +52,38 @@ export async function completeAppOnboarding(payload: CompleteOnboardingPayload) 
 }
 
 export function resetAppSession() {
-  me.value = null
+  user.value = null
+  providerUserId.value = ''
   loaded = false
   error.value = ''
 }
 
-export function getDefaultWorkspaceRoute(accountType?: AppAccountType | null) {
-  return accountType === 'BUSINESS' ? '/business' : '/user'
+export function getDefaultWorkspaceRoute(ut?: UserType | null) {
+  return ut === 'BUSINESS' ? '/business' : '/user'
 }
 
 export function useAppSession() {
-  const user = computed(() => me.value?.user ?? null)
-  const organization = computed(() => me.value?.organization ?? null)
-  const onboardingRequired = computed(() => Boolean(me.value?.onboardingRequired))
-  const accountType = computed(() => me.value?.user.accountType ?? null)
-  const providerUserId = computed(() => me.value?.user.providerUserId ?? '')
+  const userId = computed(() => user.value?.id ?? '')
+  const email = computed(() => user.value?.email ?? '')
+  const displayName = computed(() => {
+    if (!user.value) return ''
+    return [user.value.firstName, user.value.lastName].filter(Boolean).join(' ') || user.value.email
+  })
+  const userType = computed(() => user.value?.userType ?? null)
+  const userStatus = computed(() => user.value?.userStatus ?? null)
 
   return {
-    me: readonly(me),
-    user,
-    organization,
-    onboardingRequired,
-    accountType,
-    providerUserId,
+    user: readonly(user),
+    userId,
+    email,
+    displayName,
+    userType,
+    userStatus,
+    providerUserId: readonly(providerUserId),
     isLoading: readonly(isLoading),
     error: readonly(error),
     loadAppSession,
-    completeAppOnboarding,
+    registerUser,
     resetAppSession,
   }
 }

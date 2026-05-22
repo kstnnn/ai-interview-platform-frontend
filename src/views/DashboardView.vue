@@ -6,13 +6,13 @@
       <div class="mx-auto max-w-7xl">
         <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 class="text-3xl font-bold text-foreground">Interview Sessions</h1>
-            <p class="mt-1 text-muted-foreground">Shared session overview for mock interviews and vacancy candidate interviews.</p>
+            <h1 class="text-3xl font-bold text-foreground">{{ t('dashboard.title') }}</h1>
+            <p class="mt-1 text-muted-foreground">{{ t('dashboard.subtitle') }}</p>
           </div>
           <RouterLink to="/candidate/join">
             <BaseButton>
               <Plus class="h-4 w-4" />
-              Join Interview
+              {{ t('dashboard.joinInterview') }}
             </BaseButton>
           </RouterLink>
         </div>
@@ -20,28 +20,28 @@
         <div class="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <BaseCard class="p-6">
             <div class="flex items-center justify-between">
-              <span class="text-sm font-medium text-muted-foreground">Total Interviews</span>
+              <span class="text-sm font-medium text-muted-foreground">{{ t('dashboard.totalInterviews') }}</span>
               <ClipboardCheck class="h-4 w-4 text-primary" />
             </div>
             <div class="mt-3 text-3xl font-bold">{{ stats.total }}</div>
           </BaseCard>
           <BaseCard class="p-6">
             <div class="flex items-center justify-between">
-              <span class="text-sm font-medium text-muted-foreground">Completed</span>
+              <span class="text-sm font-medium text-muted-foreground">{{ t('dashboard.completed') }}</span>
               <TrendingUp class="h-4 w-4 text-success" />
             </div>
             <div class="mt-3 text-3xl font-bold">{{ stats.completed }}</div>
           </BaseCard>
           <BaseCard class="p-6">
             <div class="flex items-center justify-between">
-              <span class="text-sm font-medium text-muted-foreground">In Progress</span>
+              <span class="text-sm font-medium text-muted-foreground">{{ t('dashboard.inProgress') }}</span>
               <Users class="h-4 w-4 text-warning" />
             </div>
             <div class="mt-3 text-3xl font-bold">{{ stats.inProgress }}</div>
           </BaseCard>
           <BaseCard class="p-6">
             <div class="flex items-center justify-between">
-              <span class="text-sm font-medium text-muted-foreground">Pending</span>
+              <span class="text-sm font-medium text-muted-foreground">{{ t('dashboard.pending') }}</span>
               <Clock3 class="h-4 w-4 text-muted-foreground" />
             </div>
             <div class="mt-3 text-3xl font-bold">{{ stats.pending }}</div>
@@ -50,8 +50,8 @@
 
         <BaseCard class="overflow-hidden">
           <div class="border-b border-border/60 p-6">
-            <h2 class="text-xl font-bold text-foreground">Interview Sessions</h2>
-            <p class="mt-1 text-sm text-muted-foreground">This screen is structured for a future `GET /sessions` integration.</p>
+            <h2 class="text-xl font-bold text-foreground">{{ t('dashboard.tableTitle') }}</h2>
+            <p class="mt-1 text-sm text-muted-foreground">{{ t('dashboard.tableSubtitle') }}</p>
           </div>
 
           <div class="space-y-4 p-6">
@@ -61,7 +61,7 @@
                 <input
                   v-model="searchQuery"
                   type="text"
-                  placeholder="Search by candidate, email, or position"
+                  :placeholder="t('dashboard.searchPlaceholder')"
                   class="h-11 w-full rounded-full border border-border bg-input pl-11 pr-4 outline-none ring-0 transition focus:border-primary"
                 />
               </label>
@@ -70,10 +70,10 @@
                 v-model="statusFilter"
                 class="h-11 rounded-full border border-border bg-input px-4 outline-none transition focus:border-primary"
               >
-                <option value="all">All statuses</option>
-                <option value="completed">Completed</option>
-                <option value="in-progress">In Progress</option>
-                <option value="pending">Pending</option>
+                <option value="all">{{ t('dashboard.allStatuses') }}</option>
+                <option value="completed">{{ t('dashboard.completed') }}</option>
+                <option value="in-progress">{{ t('dashboard.inProgress') }}</option>
+                <option value="pending">{{ t('dashboard.pending') }}</option>
               </select>
             </div>
 
@@ -81,13 +81,13 @@
               <table class="min-w-full text-left">
                 <thead>
                   <tr class="border-b border-border text-sm text-muted-foreground">
-                    <th class="px-4 py-3 font-medium">Candidate</th>
-                    <th class="px-4 py-3 font-medium">Position</th>
-                    <th class="px-4 py-3 font-medium">Level</th>
-                    <th class="px-4 py-3 font-medium">Status</th>
-                    <th class="px-4 py-3 font-medium">Score</th>
-                    <th class="px-4 py-3 font-medium">Interviewer</th>
-                    <th class="px-4 py-3 text-right font-medium">Action</th>
+                    <th class="px-4 py-3 font-medium">{{ t('th.candidate') }}</th>
+                    <th class="px-4 py-3 font-medium">{{ t('th.position') }}</th>
+                    <th class="px-4 py-3 font-medium">{{ t('th.level') }}</th>
+                    <th class="px-4 py-3 font-medium">{{ t('th.status') }}</th>
+                    <th class="px-4 py-3 font-medium">{{ t('th.score') }}</th>
+                    <th class="px-4 py-3 font-medium">{{ t('th.interviewer') }}</th>
+                    <th class="px-4 py-3 text-right font-medium">{{ t('th.action') }}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -113,12 +113,12 @@
                       <RouterLink v-if="session.status === 'completed'" :to="`/results/${session.id}`">
                         <BaseButton variant="ghost" size="sm">
                           <Eye class="h-4 w-4" />
-                          View
+                          {{ t('dashboard.view') }}
                         </BaseButton>
                       </RouterLink>
                       <RouterLink v-else :to="`/candidate/interview/${session.id}`">
                         <BaseButton variant="ghost" size="sm">
-                          {{ session.status === 'in-progress' ? 'Continue' : 'Start' }}
+                          {{ session.status === 'in-progress' ? t('dashboard.continue') : t('dashboard.start') }}
                         </BaseButton>
                       </RouterLink>
                     </td>
@@ -128,7 +128,7 @@
             </div>
 
             <div v-if="filteredSessions.length === 0" class="rounded-organic bg-muted/40 p-8 text-center text-muted-foreground">
-              No interviews found for the current filters.
+              {{ t('dashboard.noResults') }}
             </div>
           </div>
         </BaseCard>
@@ -148,13 +148,17 @@ import AppHeader from '@/components/AppHeader.vue'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseCard from '@/components/BaseCard.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
-import { mockSessions } from '@/data/mock-data'
+import { getLocalizedSessions } from '@/data/mock-data'
+import { useI18n } from '@/i18n'
 
 const searchQuery = ref('')
 const statusFilter = ref<'all' | 'pending' | 'in-progress' | 'completed'>('all')
+const { t } = useI18n()
+
+const sessions = computed(() => getLocalizedSessions())
 
 const filteredSessions = computed(() => {
-  return mockSessions.filter((session) => {
+  return sessions.value.filter((session) => {
     const term = searchQuery.value.trim().toLowerCase()
     const matchesSearch =
       term.length === 0 ||
@@ -168,12 +172,15 @@ const filteredSessions = computed(() => {
   })
 })
 
-const stats = {
-  total: mockSessions.length,
-  completed: mockSessions.filter((session) => session.status === 'completed').length,
-  inProgress: mockSessions.filter((session) => session.status === 'in-progress').length,
-  pending: mockSessions.filter((session) => session.status === 'pending').length,
-}
+const stats = computed(() => {
+  const s = sessions.value
+  return {
+    total: s.length,
+    completed: s.filter((session) => session.status === 'completed').length,
+    inProgress: s.filter((session) => session.status === 'in-progress').length,
+    pending: s.filter((session) => session.status === 'pending').length,
+  }
+})
 
 function scoreClass(score?: number) {
   if (typeof score !== 'number') return 'text-muted-foreground'

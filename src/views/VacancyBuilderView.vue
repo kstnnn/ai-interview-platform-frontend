@@ -6,31 +6,31 @@
       <div class="mx-auto max-w-6xl">
         <RouterLink to="/business/vacancies" class="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft class="h-4 w-4" />
-          Back to vacancies
+          {{ t('vacancyBuilder.backToVacancies') }}
         </RouterLink>
 
         <div class="mt-6 grid gap-8 lg:grid-cols-[1fr_0.7fr]">
           <BaseCard class="p-8">
-            <h1 class="font-serif text-4xl font-bold text-foreground">Create vacancy</h1>
+            <h1 class="font-serif text-4xl font-bold text-foreground">{{ t('vacancyBuilder.title') }}</h1>
             <p class="mt-3 text-muted-foreground">
-              Define the role shape now. Backend integration can later persist this and generate candidate interview sessions from it.
+              {{ t('vacancyBuilder.description') }}
             </p>
 
             <form class="mt-8 space-y-6">
               <div class="grid gap-5 sm:grid-cols-2">
                 <label class="space-y-2">
-                  <span class="block text-sm font-semibold text-foreground">Role title</span>
+                  <span class="block text-sm font-semibold text-foreground">{{ t('vacancyBuilder.roleTitle') }}</span>
                   <input v-model="form.title" class="h-12 w-full rounded-full border border-border bg-input px-4 outline-none focus:border-primary" />
                 </label>
                 <label class="space-y-2">
-                  <span class="block text-sm font-semibold text-foreground">Department</span>
+                  <span class="block text-sm font-semibold text-foreground">{{ t('vacancyBuilder.department') }}</span>
                   <input v-model="form.department" class="h-12 w-full rounded-full border border-border bg-input px-4 outline-none focus:border-primary" />
                 </label>
               </div>
 
               <div class="grid gap-5 sm:grid-cols-2">
                 <label class="space-y-2">
-                  <span class="block text-sm font-semibold text-foreground">Level</span>
+                  <span class="block text-sm font-semibold text-foreground">{{ t('vacancyBuilder.level') }}</span>
                   <select v-model="form.level" class="h-12 w-full rounded-full border border-border bg-input px-4 outline-none focus:border-primary">
                     <option>Junior</option>
                     <option>Mid</option>
@@ -39,58 +39,58 @@
                   </select>
                 </label>
                 <label class="space-y-2">
-                  <span class="block text-sm font-semibold text-foreground">Interview duration</span>
+                  <span class="block text-sm font-semibold text-foreground">{{ t('vacancyBuilder.interviewDuration') }}</span>
                   <select v-model="form.duration" class="h-12 w-full rounded-full border border-border bg-input px-4 outline-none focus:border-primary">
-                    <option>45 minutes</option>
-                    <option>60 minutes</option>
-                    <option>75 minutes</option>
-                    <option>90 minutes</option>
+                    <option>45 {{ t('common.minutes') }}</option>
+                    <option>60 {{ t('common.minutes') }}</option>
+                    <option>75 {{ t('common.minutes') }}</option>
+                    <option>90 {{ t('common.minutes') }}</option>
                   </select>
                 </label>
               </div>
 
               <label class="space-y-2 block">
-                <span class="block text-sm font-semibold text-foreground">Stack</span>
+                <span class="block text-sm font-semibold text-foreground">{{ t('vacancyBuilder.stack') }}</span>
                 <input v-model="form.stack" class="h-12 w-full rounded-full border border-border bg-input px-4 outline-none focus:border-primary" />
-                <p class="text-xs text-muted-foreground">Comma-separated for now. Later this can become a normalized skill selector.</p>
+                <p class="text-xs text-muted-foreground">{{ t('vacancyBuilder.stackHint') }}</p>
               </label>
 
               <label class="space-y-2 block">
-                <span class="block text-sm font-semibold text-foreground">Required skills</span>
+                <span class="block text-sm font-semibold text-foreground">{{ t('vacancyBuilder.requiredSkills') }}</span>
                 <textarea v-model="form.skills" rows="3" class="w-full rounded-[1.5rem] border border-border bg-input px-4 py-3 outline-none focus:border-primary"></textarea>
               </label>
 
               <div class="rounded-[1.5rem] border border-border/60 p-5">
                 <div class="flex items-start justify-between gap-4">
                   <div>
-                    <h2 class="font-bold text-foreground">Optional company questions</h2>
-                    <p class="mt-1 text-sm text-muted-foreground">If empty, AI will use only questions from your database/question bank.</p>
+                    <h2 class="font-bold text-foreground">{{ t('vacancyBuilder.questionsTitle') }}</h2>
+                    <p class="mt-1 text-sm text-muted-foreground">{{ t('vacancyBuilder.questionsDesc') }}</p>
                   </div>
-                  <BaseButton type="button" variant="outline" size="sm">Add question</BaseButton>
+                  <BaseButton type="button" variant="outline" size="sm">{{ t('vacancyBuilder.addQuestion') }}</BaseButton>
                 </div>
                 <div class="mt-4 space-y-3">
-                  <textarea v-model="form.question" rows="3" class="w-full rounded-[1.5rem] border border-border bg-input px-4 py-3 outline-none focus:border-primary" placeholder="Example: Ask candidate to design tenant isolation for our SaaS analytics module."></textarea>
+                  <textarea v-model="form.question" rows="3" class="w-full rounded-[1.5rem] border border-border bg-input px-4 py-3 outline-none focus:border-primary" :placeholder="t('vacancyBuilder.questionPlaceholder')"></textarea>
                 </div>
               </div>
 
               <div class="flex flex-col gap-3 sm:flex-row">
-                <BaseButton tag="button" type="button">Save draft</BaseButton>
-                <BaseButton tag="button" type="button" variant="outline">Publish later</BaseButton>
+                <BaseButton tag="button" type="button">{{ t('common.saveDraft') }}</BaseButton>
+                <BaseButton tag="button" type="button" variant="outline">{{ t('common.publishLater') }}</BaseButton>
               </div>
             </form>
           </BaseCard>
 
           <div class="space-y-5">
             <BaseCard class="p-6">
-              <h2 class="text-lg font-bold text-foreground">Question strategy</h2>
+              <h2 class="text-lg font-bold text-foreground">{{ t('vacancyBuilder.questionStrategyTitle') }}</h2>
               <div class="mt-4 space-y-4 text-sm text-muted-foreground">
-                <p><strong class="text-foreground">With custom questions:</strong> AI mixes company questions with bank questions matched to stack and level.</p>
-                <p><strong class="text-foreground">Without custom questions:</strong> AI uses only your database question bank.</p>
+                <p><strong class="text-foreground">{{ t('vacancyBuilder.questionStrategyWith') }}</strong></p>
+                <p><strong class="text-foreground">{{ t('vacancyBuilder.questionStrategyWithout') }}</strong></p>
               </div>
             </BaseCard>
 
             <BaseCard class="p-6">
-              <h2 class="text-lg font-bold text-foreground">Future payload</h2>
+              <h2 class="text-lg font-bold text-foreground">{{ t('vacancyBuilder.payloadTitle') }}</h2>
               <div class="mt-4 rounded-[1.5rem] bg-muted/50 p-4 font-mono text-xs leading-relaxed text-muted-foreground">
                 POST /organizations/:id/vacancies<br />
                 title, stack, skills, questions, duration
@@ -113,6 +113,9 @@ import AppFooter from '@/components/AppFooter.vue'
 import AppHeader from '@/components/AppHeader.vue'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseCard from '@/components/BaseCard.vue'
+import { useI18n } from '@/i18n'
+
+const { t } = useI18n()
 
 const form = reactive({
   title: 'Senior Full-Stack Engineer',

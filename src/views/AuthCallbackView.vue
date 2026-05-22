@@ -3,24 +3,24 @@
     <BaseCard class="max-w-md p-8">
       <LoaderCircle v-if="!hasError" class="mx-auto h-8 w-8 animate-spin text-primary" />
       <h1 class="mt-5 text-2xl font-bold text-foreground">
-        {{ hasError ? 'Connection failed' : 'Completing sign in' }}
+        {{ hasError ? t('authCallback.connectionFailed') : t('authCallback.title') }}
       </h1>
-      <p v-if="!hasError" class="mt-3 text-sm leading-relaxed text-muted-foreground">The secure login flow redirected back to the app. Finalizing your session.</p>
+      <p v-if="!hasError" class="mt-3 text-sm leading-relaxed text-muted-foreground">{{ t('authCallback.subtitle') }}</p>
 
       <div v-if="callbackError || appSessionError" class="mt-6 rounded-[1.5rem] border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">
         {{ callbackError || appSessionError }}
       </div>
 
       <div v-if="isStateError" class="mt-4 rounded-[1.5rem] border border-warning/30 bg-warning/10 p-4 text-sm text-foreground">
-        Redirecting you back to login...
+        {{ t('authCallback.redirecting') }}
       </div>
 
       <div v-if="hasError && !isStateError" class="mt-6 flex flex-col gap-3 sm:flex-row">
         <BaseButton size="md" @click="retry">
-          Retry
+          {{ t('authCallback.retry') }}
         </BaseButton>
         <BaseButton variant="outline" size="md" @click="signOut">
-          Sign out
+          {{ t('authCallback.signOut') }}
         </BaseButton>
       </div>
     </BaseCard>
@@ -36,27 +36,38 @@ import BaseButton from '@/components/BaseButton.vue'
 import BaseCard from '@/components/BaseCard.vue'
 import { useAuth } from '@/composables/useAuth'
 import { getDefaultWorkspaceRoute, useAppSession } from '@/composables/useAppSession'
+import { useI18n } from '@/i18n'
 
 const router = useRouter()
+const { t } = useI18n()
 const { completeCallback, error: callbackError, logout } = useAuth()
-const { error: appSessionError, loadAppSession } = useAppSession()
+const { error: appSessionError, loadAppSession, userType } = useAppSession()
 const hasError = ref(false)
 
 const isStateError = computed(() => callbackError.value.toLowerCase().includes('session state was lost'))
 
 onMounted(async () => {
   try {
-    const user = await completeCallback()
-    if (!user) return
-    const returnTo = getCallbackRedirect(user)
-    const session = await loadAppSession(true)
+    const zitadelUser = await completeCallback()
+    if (!zitadelUser) return
 
-    if (session?.onboardingRequired) {
-      await router.replace('/onboarding')
+    const sub = zitadelUser.profile.sub
+    if (!sub) {
+      hasError.value = true
       return
     }
 
-    await router.replace(returnTo ?? getDefaultWorkspaceRoute(session?.user.accountType))
+    try {
+      await loadAppSession(sub, true)
+    } catch (err: any) {
+      if (err?.code === 'USER_NOT_FOUND' || err?.status === 404) {
+        await router.replace('/onboarding')
+        return
+      }
+      throw err
+    }
+
+    await router.replace(getDefaultWorkspaceRoute(userType.value))
   } catch {
     hasError.value = true
   }
@@ -65,17 +76,26 @@ onMounted(async () => {
 async function retry() {
   hasError.value = false
   try {
-    const user = await completeCallback()
-    if (!user) return
-    const returnTo = getCallbackRedirect(user)
-    const session = await loadAppSession(true)
+    const zitadelUser = await completeCallback()
+    if (!zitadelUser) return
 
-    if (session?.onboardingRequired) {
-      await router.replace('/onboarding')
+    const sub = zitadelUser.profile.sub
+    if (!sub) {
+      hasError.value = true
       return
     }
 
-    await router.replace(returnTo ?? getDefaultWorkspaceRoute(session?.user.accountType))
+    try {
+      await loadAppSession(sub, true)
+    } catch (err: any) {
+      if (err?.code === 'USER_NOT_FOUND' || err?.status === 404) {
+        await router.replace('/onboarding')
+        return
+      }
+      throw err
+    }
+
+    await router.replace(getDefaultWorkspaceRoute(userType.value))
   } catch {
     hasError.value = true
   }

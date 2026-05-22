@@ -6,37 +6,37 @@
       <div class="mx-auto max-w-6xl">
         <RouterLink to="/user" class="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft class="h-4 w-4" />
-          Back to user workspace
+          {{ t('learningRoadmap.backToUser') }}
         </RouterLink>
 
         <div class="mt-6 grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
           <BaseCard class="p-8">
-            <p class="text-sm font-semibold uppercase tracking-[0.2em] text-primary">AI feedback plan</p>
-            <h1 class="mt-3 font-serif text-4xl font-bold text-foreground">Roadmap after your mock interview</h1>
+            <p class="text-sm font-semibold uppercase tracking-[0.2em] text-primary">{{ t('learningRoadmap.aiFeedback') }}</p>
+            <h1 class="mt-3 font-serif text-4xl font-bold text-foreground">{{ t('learningRoadmap.title') }}</h1>
             <p class="mt-4 leading-relaxed text-muted-foreground">
-              This page shows how interview results can become articles, practice tasks, and a week-by-week improvement plan.
+              {{ t('learningRoadmap.description') }}
             </p>
             <div class="mt-6 grid grid-cols-3 gap-3 text-center">
               <div class="rounded-[1.25rem] bg-muted/50 p-4">
                 <div class="text-2xl font-bold text-primary">3</div>
-                <p class="mt-1 text-xs text-muted-foreground">weeks</p>
+                <p class="mt-1 text-xs text-muted-foreground">{{ t('learningRoadmap.weeks') }}</p>
               </div>
               <div class="rounded-[1.25rem] bg-muted/50 p-4">
                 <div class="text-2xl font-bold text-primary">6</div>
-                <p class="mt-1 text-xs text-muted-foreground">goals</p>
+                <p class="mt-1 text-xs text-muted-foreground">{{ t('learningRoadmap.goals') }}</p>
               </div>
               <div class="rounded-[1.25rem] bg-muted/50 p-4">
                 <div class="text-2xl font-bold text-primary">177</div>
-                <p class="mt-1 text-xs text-muted-foreground">minutes</p>
+                <p class="mt-1 text-xs text-muted-foreground">{{ t('learningRoadmap.minutes') }}</p>
               </div>
             </div>
           </BaseCard>
 
           <BaseCard class="p-8">
-            <h2 class="text-xl font-bold text-foreground">Recommended resources</h2>
+            <h2 class="text-xl font-bold text-foreground">{{ t('learningRoadmap.resourcesTitle') }}</h2>
             <div class="mt-5 grid gap-4 md:grid-cols-3">
-              <div v-for="item in mockRecommendations" :key="item.id" class="rounded-[1.5rem] border border-border/60 p-5">
-                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{{ item.type }} · {{ item.estimatedMinutes }} min</p>
+              <div v-for="item in recommendations" :key="item.id" class="rounded-[1.5rem] border border-border/60 p-5">
+                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{{ item.type }} · {{ item.estimatedMinutes }} {{ t('common.minutes') }}</p>
                 <h3 class="mt-2 font-bold text-foreground">{{ item.title }}</h3>
                 <p class="mt-2 text-sm leading-relaxed text-muted-foreground">{{ item.reason }}</p>
               </div>
@@ -45,7 +45,7 @@
         </div>
 
         <section class="mt-6 space-y-5">
-          <BaseCard v-for="step in mockRoadmap" :key="step.id" class="p-6">
+          <BaseCard v-for="step in roadmap" :key="step.id" class="p-6">
             <div class="grid gap-5 md:grid-cols-[160px_1fr]">
               <div>
                 <span class="rounded-full bg-primary/10 px-4 py-2 text-sm font-semibold text-primary">{{ step.week }}</span>
@@ -70,10 +70,16 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ArrowLeft } from 'lucide-vue-next'
 import AppFooter from '@/components/AppFooter.vue'
 import AppHeader from '@/components/AppHeader.vue'
 import BaseCard from '@/components/BaseCard.vue'
-import { mockRecommendations, mockRoadmap } from '@/data/mock-data'
+import { getLocalizedRecommendations, getLocalizedRoadmap } from '@/data/mock-data'
+import { useI18n } from '@/i18n'
+
+const { t } = useI18n()
+const recommendations = computed(() => getLocalizedRecommendations())
+const roadmap = computed(() => getLocalizedRoadmap())
 </script>

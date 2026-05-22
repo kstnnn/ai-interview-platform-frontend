@@ -1,63 +1,150 @@
 <template>
-  <div v-if="session && score" class="flex min-h-screen flex-col bg-background">
+  <div v-if="isLoading" class="flex min-h-screen items-center justify-center px-4 text-center">
+    <BaseCard class="max-w-md p-8">
+      <h1 class="text-2xl font-bold text-foreground">{{ t('results.loading') }}</h1>
+    </BaseCard>
+  </div>
+
+  <div v-else-if="result" class="flex min-h-screen flex-col bg-background">
     <AppHeader />
 
     <main class="flex-1 px-4 py-12 sm:px-6 lg:px-8">
       <div class="mx-auto max-w-4xl">
         <div class="mb-8 text-center">
-          <h1 class="text-3xl font-bold text-foreground sm:text-4xl">Interview Results</h1>
-          <p class="mt-2 text-muted-foreground">Detailed frontend report for {{ session.candidateName }}</p>
+          <h1 class="text-3xl font-bold text-foreground sm:text-4xl">{{ t('results.title') }}</h1>
+          <p class="mt-2 text-muted-foreground">{{ t('results.subtitle') }}</p>
         </div>
+
+        <BaseCard v-if="reportError" class="mb-8 border border-warning/20 bg-warning/10 p-5">
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 class="font-semibold text-foreground">{{ t('results.fullReportFailed') }}</h2>
+              <p class="mt-1 text-sm text-muted-foreground">
+                {{ reportSource === 'fallback' ? t('results.localFallbackShown') : reportError }}
+              </p>
+            </div>
+            <BaseButton variant="outline" :disabled="isRetrying" @click="loadReport">
+              {{ isRetrying ? t('results.loading') : t('results.retryReport') }}
+            </BaseButton>
+          </div>
+        </BaseCard>
 
         <BaseCard class="mb-8 border-2 border-primary/20 p-8">
           <div class="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <div class="text-5xl font-bold text-primary">{{ score.overallScore }}</div>
-              <p class="mt-2 text-sm text-muted-foreground">out of 100</p>
+              <div class="text-5xl font-bold text-primary">{{ Math.round(result.sessionConfidence * 100) }}</div>
+              <p class="mt-2 text-sm text-muted-foreground">{{ t('results.outOf') }}</p>
             </div>
-            <div :class="recommendationClass" class="rounded-full px-4 py-2 text-sm font-semibold">
-              {{ recommendationLabel }}
+            <div :class="confidenceClass" class="rounded-full px-4 py-2 text-sm font-semibold">
+              {{ confidenceLabel }}
             </div>
           </div>
 
           <div class="mt-6 h-3 overflow-hidden rounded-full bg-muted">
-            <div class="h-full rounded-full bg-primary" :style="{ width: `${score.overallScore}%` }"></div>
+            <div class="h-full rounded-full bg-primary" :style="{ width: `${Math.round(result.sessionConfidence * 100)}%` }"></div>
           </div>
         </BaseCard>
-
-        <div class="mb-8 grid gap-4 sm:grid-cols-2">
-          <MetricCard title="Technical Skill" :value="score.technicalSkill" />
-          <MetricCard title="Problem Solving" :value="score.problemSolving" />
-          <MetricCard title="Communication" :value="score.communication" />
-          <MetricCard title="Code Quality" :value="score.codeQuality" />
-        </div>
 
         <BaseCard class="mb-8 p-8">
-          <h2 class="text-xl font-bold text-foreground">Session Information</h2>
-          <div class="mt-6 grid gap-4 sm:grid-cols-2">
-            <InfoItem label="Candidate" :value="session.candidateName" />
-            <InfoItem label="Position" :value="session.position" />
-            <InfoItem label="Level" :value="session.level" />
-            <InfoItem label="Interviewer" :value="session.interviewerName ?? '—'" />
-            <InfoItem label="Date" :value="completedDate" />
-            <InfoItem label="Duration" value="1 hour 30 minutes" />
+          <h2 class="text-xl font-bold text-foreground">{{ t('results.topicBreakdown') }}</h2>
+          <div class="mt-6 space-y-4">
+            <div v-for="topic in result.topics" :key="topic.topic" class="rounded-[1.5rem] bg-muted/40 p-4">
+              <div class="flex items-center justify-between">
+                <h3 class="font-semibold text-foreground">{{ topicLabel(topic.topic) }}</h3>
+                <span class="text-sm font-bold text-primary">{{ Math.round(topic.masteryScore * 100) }}%</span>
+              </div>
+              <div class="mt-2 h-2 overflow-hidden rounded-full bg-background/50">
+                <div class="h-full rounded-full bg-primary" :style="{ width: `${Math.round(topic.masteryScore * 100)}%` }"></div>
+              </div>
+              <div class="mt-3 grid grid-cols-3 gap-4 text-center text-xs text-muted-foreground">
+                <div>
+                  <p class="font-semibold text-foreground">{{ topic.questionsAsked }}</p>
+                  <p>{{ t('results.questionsAsked') }}</p>
+                </div>
+                <div>
+                  <p class="font-semibold text-foreground">{{ formatScore10(topic.avgScore) }}/10</p>
+                  <p>{{ t('results.avgScore') }}</p>
+                </div>
+                <div>
+                  <p class="font-semibold text-foreground">{{ Math.round(topic.confidenceScore * 100) }}%</p>
+                  <p>{{ t('results.confidence') }}</p>
+                </div>
+              </div>
+            </div>
           </div>
         </BaseCard>
 
-        <BaseCard v-if="session.feedback" class="mb-8 p-8">
-          <h2 class="text-xl font-bold text-foreground">Interviewer Feedback</h2>
-          <p class="mt-4 leading-relaxed text-muted-foreground">{{ session.feedback }}</p>
+        <BaseCard class="mb-8 p-8">
+          <h2 class="text-xl font-bold text-foreground">{{ t('results.questionReview') }}</h2>
+          <div v-if="!result.questions?.length" class="mt-6 rounded-[1.5rem] bg-muted/40 p-6 text-sm text-muted-foreground">
+            {{ t('results.noQuestionReview') }}
+          </div>
+          <div v-else class="mt-6 space-y-4">
+            <details v-for="question in result.questions" :key="question.sessionQuestionId" class="rounded-[1.5rem] bg-muted/40 p-5">
+              <summary class="cursor-pointer list-none">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <div class="flex flex-wrap gap-2 text-xs font-semibold text-muted-foreground">
+                      <span class="rounded-full bg-background px-3 py-1">#{{ question.questionIndex || question.roundNumber }}</span>
+                      <span class="rounded-full bg-background px-3 py-1">{{ question.questionType }}</span>
+                      <span v-if="question.difficulty" class="rounded-full bg-background px-3 py-1">{{ question.difficulty }}</span>
+                    </div>
+                    <h3 class="mt-3 font-semibold text-foreground">{{ question.questionText }}</h3>
+                    <p class="mt-1 text-xs text-muted-foreground">
+                      {{ topicLabel(question.topic) }}<span v-if="question.subtopic"> · {{ topicLabel(question.subtopic) }}</span>
+                    </p>
+                  </div>
+                  <div class="text-left sm:text-right">
+                    <p class="text-sm font-bold text-primary">{{ scoreLabel(question.totalScore) }}</p>
+                    <p class="text-xs text-muted-foreground">{{ t('results.totalScore') }}</p>
+                  </div>
+                </div>
+              </summary>
+
+              <div class="mt-5 grid gap-4">
+                <div>
+                  <h4 class="text-sm font-semibold text-foreground">{{ t('results.yourAnswer') }}</h4>
+                  <p class="mt-2 rounded-2xl bg-background/60 p-4 text-sm leading-relaxed text-muted-foreground">
+                    {{ question.answerText || t('results.notAnswered') }}
+                  </p>
+                </div>
+
+                <div>
+                  <h4 class="text-sm font-semibold text-foreground">{{ t('results.aiFeedback') }}</h4>
+                  <p class="mt-2 rounded-2xl bg-background/60 p-4 text-sm leading-relaxed text-muted-foreground">
+                    {{ question.feedback || t('results.notEvaluated') }}
+                  </p>
+                </div>
+
+                <div class="grid gap-3 sm:grid-cols-4">
+                  <ScorePill :label="t('results.correctness')" :score="question.correctnessScore ?? undefined" />
+                  <ScorePill :label="t('results.depth')" :score="question.depthScore ?? undefined" />
+                  <ScorePill :label="t('results.practical')" :score="question.practicalScore ?? undefined" />
+                  <ScorePill :label="t('results.totalScore')" :score="question.totalScore ?? undefined" />
+                </div>
+
+                <div v-if="question.knowledgeGaps.length">
+                  <h4 class="text-sm font-semibold text-foreground">{{ t('results.knowledgeGaps') }}</h4>
+                  <div class="mt-2 flex flex-wrap gap-2">
+                    <span v-for="gap in question.knowledgeGaps" :key="gap" class="rounded-full bg-warning/10 px-3 py-1 text-xs font-semibold text-foreground">
+                      {{ gap }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </details>
+          </div>
         </BaseCard>
 
         <div class="flex flex-col gap-3 sm:flex-row sm:justify-between">
-          <RouterLink to="/dashboard">
+          <RouterLink to="/user">
             <BaseButton variant="outline">
               <ArrowLeft class="h-4 w-4" />
-              Back to Dashboard
+              {{ t('results.backToWorkspace') }}
             </BaseButton>
           </RouterLink>
-          <RouterLink :to="`/sessions/${session.id}/report`">
-            <BaseButton>Open Session Report</BaseButton>
+          <RouterLink to="/user/mock-interview/new">
+            <BaseButton>{{ t('results.newInterview') }}</BaseButton>
           </RouterLink>
         </div>
       </div>
@@ -68,84 +155,141 @@
 
   <div v-else class="flex min-h-screen items-center justify-center px-4 text-center">
     <BaseCard class="max-w-md p-8">
-      <h1 class="text-2xl font-bold text-foreground">Result unavailable</h1>
-      <p class="mt-3 text-muted-foreground">This demo result exists only for completed local sessions.</p>
-      <RouterLink to="/dashboard" class="mt-6 inline-block">
-        <BaseButton>Back to Dashboard</BaseButton>
+      <h1 class="text-2xl font-bold text-foreground">{{ t('results.unavailable') }}</h1>
+      <p class="mt-3 text-muted-foreground">{{ t('results.unavailableDesc') }}</p>
+      <RouterLink to="/user" class="mt-6 inline-block">
+        <BaseButton>{{ t('results.backToWorkspace') }}</BaseButton>
       </RouterLink>
     </BaseCard>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, defineComponent, h } from 'vue'
+import { computed, defineComponent, h, onMounted, ref } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { ArrowLeft } from 'lucide-vue-next'
 import AppFooter from '@/components/AppFooter.vue'
 import AppHeader from '@/components/AppHeader.vue'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseCard from '@/components/BaseCard.vue'
-import { getScoreForSession, getSessionById } from '@/data/mock-data'
+import { getInterviewReport } from '@/api/interview'
+import type { InterviewResult } from '@/types/api'
+import { useI18n } from '@/i18n'
 
 const route = useRoute()
-const sessionId = computed(() => String(route.params.sessionId ?? ''))
-const session = computed(() => getSessionById(sessionId.value))
-const score = computed(() => getScoreForSession(sessionId.value))
+const { locale, t } = useI18n()
+const sessionId = String(route.params.sessionId ?? '')
+const result = ref<InterviewResult | null>(null)
+const isLoading = ref(true)
+const isRetrying = ref(false)
+const reportError = ref('')
+const reportSource = ref<'backend' | 'fallback' | null>(null)
 
-const completedDate = computed(() => {
-  if (!session.value?.completedAt) {
-    return '—'
+function readFallbackResult() {
+  const stored = localStorage.getItem(`interviewResult_${sessionId}`)
+  if (!stored) return null
+  try {
+    return JSON.parse(stored) as InterviewResult
+  } catch {
+    return null
   }
+}
 
-  return new Date(session.value.completedAt).toLocaleDateString()
+async function loadReport() {
+  isRetrying.value = !isLoading.value
+  reportError.value = ''
+
+  try {
+    result.value = await getInterviewReport(sessionId)
+    reportSource.value = 'backend'
+    localStorage.setItem(`interviewResult_${sessionId}`, JSON.stringify(result.value))
+  } catch (err) {
+    reportError.value = err instanceof Error ? err.message : t('results.fullReportFailed')
+    result.value = readFallbackResult()
+    reportSource.value = result.value ? 'fallback' : null
+  } finally {
+    isLoading.value = false
+    isRetrying.value = false
+  }
+}
+
+onMounted(async () => {
+  await loadReport()
 })
 
-const recommendationLabel = computed(() => {
-  const recommendation = score.value?.recommendation
-  if (recommendation === 'strong-yes') return 'Strong Yes'
-  if (recommendation === 'yes') return 'Yes'
-  if (recommendation === 'maybe') return 'Maybe'
-  if (recommendation === 'no') return 'No'
-  return 'Strong No'
+const topicLabels: Record<string, { en: string; ru: string }> = {
+  language_basics: { en: 'Language Basics', ru: 'Основы языка' },
+  concurrency: { en: 'Concurrency', ru: 'Многопоточность' },
+  collections: { en: 'Collections', ru: 'Коллекции' },
+  strings: { en: 'Strings', ru: 'Строки' },
+  spring: { en: 'Spring', ru: 'Spring' },
+  spring_boot: { en: 'Spring Boot', ru: 'Spring Boot' },
+  persistence: { en: 'Persistence', ru: 'Работа с данными' },
+  hibernate: { en: 'Hibernate', ru: 'Hibernate' },
+  postgresql: { en: 'PostgreSQL', ru: 'PostgreSQL' },
+  kafka: { en: 'Kafka', ru: 'Kafka' },
+  redis: { en: 'Redis', ru: 'Redis' },
+  system_design: { en: 'System Design', ru: 'Проектирование систем' },
+  testing: { en: 'Testing', ru: 'Тестирование' },
+  devops: { en: 'DevOps', ru: 'DevOps' },
+}
+
+function topicLabel(topic?: string | null) {
+  if (!topic) return '—'
+  const mapped = topicLabels[topic]
+  if (mapped) return mapped[locale.value]
+  return topic
+    .split('_')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+function normalizedPercent(score: number | null | undefined) {
+  if (typeof score !== 'number') return null
+  return Math.round(score * 100)
+}
+
+function scoreLabel(score: number | null | undefined) {
+  const percent = normalizedPercent(score)
+  return percent === null ? t('results.notEvaluated') : `${percent}%`
+}
+
+function formatScore10(score: number | null | undefined) {
+  if (typeof score !== 'number') return '—'
+  return (score * 10).toFixed(1)
+}
+
+const confidenceLabel = computed(() => {
+  if (!result.value) return ''
+  const confidence = result.value.sessionConfidence
+  if (confidence >= 0.85) return t('results.strongYes')
+  if (confidence >= 0.70) return t('results.yes')
+  if (confidence >= 0.50) return t('results.maybe')
+  if (confidence >= 0.30) return t('results.no')
+  return t('results.strongNo')
 })
 
-const recommendationClass = computed(() => {
-  const recommendation = score.value?.recommendation
-  if (recommendation === 'strong-yes') return 'bg-success/10 text-success'
-  if (recommendation === 'yes') return 'bg-primary/10 text-primary'
-  if (recommendation === 'maybe') return 'bg-warning/10 text-foreground'
+const confidenceClass = computed(() => {
+  if (!result.value) return ''
+  const confidence = result.value.sessionConfidence
+  if (confidence >= 0.85) return 'bg-success/10 text-success'
+  if (confidence >= 0.70) return 'bg-primary/10 text-primary'
+  if (confidence >= 0.50) return 'bg-warning/10 text-foreground'
   return 'bg-destructive/10 text-destructive'
 })
 
-const MetricCard = defineComponent({
-  name: 'MetricCard',
-  props: {
-    title: { type: String, required: true },
-    value: { type: Number, required: true },
-  },
-  setup(props) {
-    return () =>
-      h(BaseCard, { class: 'p-6' }, () => [
-        h('h3', { class: 'text-lg font-bold text-foreground' }, props.title),
-        h('div', { class: 'mt-3 text-3xl font-bold text-primary' }, `${props.value}/10`),
-        h('div', { class: 'mt-3 h-2 overflow-hidden rounded-full bg-muted' }, [
-          h('div', { class: 'h-full rounded-full bg-primary', style: { width: `${props.value * 10}%` } }),
-        ]),
-      ])
-  },
-})
-
-const InfoItem = defineComponent({
-  name: 'InfoItem',
+const ScorePill = defineComponent({
+  name: 'ScorePill',
   props: {
     label: { type: String, required: true },
-    value: { type: String, required: true },
+    score: { type: Number, default: null },
   },
   setup(props) {
     return () =>
-      h('div', [
-        h('p', { class: 'text-sm font-medium text-muted-foreground' }, props.label),
-        h('p', { class: 'mt-1 font-semibold text-foreground' }, props.value),
+      h('div', { class: 'rounded-2xl bg-background/60 p-4 text-center' }, [
+        h('p', { class: 'text-lg font-bold text-primary' }, scoreLabel(props.score)),
+        h('p', { class: 'mt-1 text-xs text-muted-foreground' }, props.label),
       ])
   },
 })

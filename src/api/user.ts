@@ -1,8 +1,8 @@
-import { apiRequest } from '@/api/client'
+import { apiRequest, publicApiRequest } from '@/api/client'
 import type { CreateUserRequest, UserResponse } from '@/types/api'
 
 export function getUserByProviderId(providerUserId: string) {
-  return apiRequest<UserResponse>(`/users/by-provider-id/${providerUserId}`)
+  return publicApiRequest<UserResponse>(`/users/by-provider-id/${providerUserId}`)
 }
 
 export function getUserById(id: string) {

@@ -44,7 +44,6 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { LogIn } from 'lucide-vue-next'
 import AppFooter from '@/components/AppFooter.vue'
@@ -55,12 +54,8 @@ import { useAuth } from '@/composables/useAuth'
 import { useI18n } from '@/i18n'
 
 const route = useRoute()
-const { error, initialize, isZitadelConfigured, login } = useAuth()
+const { error, isZitadelConfigured, login } = useAuth()
 const { t } = useI18n()
-
-onMounted(() => {
-  void initialize()
-})
 
 function startLogin() {
   const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : undefined

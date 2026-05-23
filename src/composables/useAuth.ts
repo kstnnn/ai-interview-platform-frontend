@@ -21,6 +21,7 @@ const isLoading = ref(false)
 const error = ref('')
 const needsRegistration = ref(false)
 let initialized = false
+let authStateInitialized = false
 
 userManager.events.addUserLoaded((loadedUser) => {
   zitadelUser.value = loadedUser
@@ -45,9 +46,25 @@ export function useAuth() {
 
     try {
       zitadelUser.value = await getCurrentUser()
+      authStateInitialized = true
       if (zitadelUser.value) {
         await resolveAppSession()
       }
+    } catch (caughtError) {
+      error.value = caughtError instanceof Error ? caughtError.message : 'Failed to load auth state.'
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function initializeAuthState() {
+    if (authStateInitialized) return
+    authStateInitialized = true
+    isLoading.value = true
+    error.value = ''
+
+    try {
+      zitadelUser.value = await getCurrentUser()
     } catch (caughtError) {
       error.value = caughtError instanceof Error ? caughtError.message : 'Failed to load auth state.'
     } finally {
@@ -65,7 +82,7 @@ export function useAuth() {
     }
 
     try {
-      await loadAppSession(sub)
+      appUser.value = await loadAppSession(sub)
       needsRegistration.value = false
     } catch (caughtError: any) {
       if (caughtError?.code === 'USER_NOT_FOUND' || caughtError?.status === 404) {
@@ -152,6 +169,7 @@ export function useAuth() {
     needsRegistration: readonly(needsRegistration),
     isRegistered,
     initialize,
+    initializeAuthState,
     login,
     register,
     completeCallback,

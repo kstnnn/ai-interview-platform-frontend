@@ -45,7 +45,7 @@ import { useAuth } from '@/composables/useAuth'
 import { useI18n } from '@/i18n'
 
 const { t } = useI18n()
-const { displayName, initialize, isAuthenticated } = useAuth()
+const { displayName, initializeAuthState, isAuthenticated } = useAuth()
 
-void initialize()
+void initializeAuthState()
 </script>

@@ -104,3 +104,59 @@ export type InterviewResult = {
   topics: InterviewTopicResult[]
   questions?: InterviewQuestionReport[]
 }
+
+export type OrganizationStatus = 'ACTIVE' | 'ARCHIVED'
+export type VacancyStatus = 'DRAFT' | 'PUBLISHED' | 'CLOSED' | 'ARCHIVED'
+export type EmploymentType = 'FULL_TIME' | 'PART_TIME' | 'CONTRACT' | 'INTERNSHIP'
+export type WorkFormat = 'REMOTE' | 'HYBRID' | 'ONSITE'
+export type VacancyLevel = 'JUNIOR' | 'MIDDLE' | 'SENIOR'
+
+export type OrganizationResponse = {
+  id: string
+  ownerUserId: string
+  name: string
+  description: string | null
+  websiteUrl: string | null
+  logoUrl: string | null
+  status: OrganizationStatus
+  createdAt: string
+  updatedAt: string
+}
+
+export type CreateOrganizationRequest = {
+  name: string
+  description?: string | null
+  websiteUrl?: string | null
+  logoUrl?: string | null
+}
+
+export type VacancyResponse = {
+  id: string
+  organizationId: string
+  organizationName: string
+  title: string
+  description: string
+  requirements: string | null
+  location: string | null
+  employmentType: EmploymentType
+  workFormat: WorkFormat
+  level: VacancyLevel
+  status: VacancyStatus
+  createdByUserId: string
+  technologyKeys: string[]
+  createdAt: string
+  updatedAt: string
+}
+
+export type CreateVacancyRequest = {
+  title: string
+  description: string
+  requirements?: string | null
+  location?: string | null
+  employmentType: EmploymentType
+  workFormat: WorkFormat
+  level: VacancyLevel
+  technologyKeys?: string[]
+}
+
+export type UpdateVacancyRequest = Partial<CreateVacancyRequest>

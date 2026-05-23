@@ -24,6 +24,7 @@ export type UserResponse = {
 
 export type InterviewLevel = 'JUNIOR' | 'MIDDLE' | 'SENIOR'
 export type InterviewLanguage = 'Russian' | 'English'
+export type InterviewSessionType = 'MOCK' | 'VACANCY_APPLICATION'
 
 export type CreateInterviewRequest = {
   userId: string
@@ -49,6 +50,7 @@ export type InterviewSessionStatus = 'CREATED' | 'IN_PROGRESS' | 'COMPLETED' | '
 
 export type InterviewSessionSummary = {
   sessionId: string
+  sessionType: InterviewSessionType
   status: InterviewSessionStatus
   interviewLevel: InterviewLevel
   interviewLanguage: InterviewLanguage
@@ -57,6 +59,18 @@ export type InterviewSessionSummary = {
   startedAt: string | null
   finishedAt: string | null
   questionsAsked: number
+}
+
+export type InterviewSessionDetails = {
+  sessionId: string
+  sessionType: InterviewSessionType
+  status: InterviewSessionStatus
+  interviewLevel: InterviewLevel
+  interviewLanguage: InterviewLanguage
+  vacancyId: string | null
+  applicationId: string | null
+  startedAt: string | null
+  finishedAt: string | null
 }
 
 export type STOMPEventType = 'GREETING' | 'QUESTION_ASKED' | 'ANSWER_EVALUATED' | 'FEEDBACK' | 'SESSION_FINISHED' | 'ERROR'
@@ -104,6 +118,41 @@ export type InterviewResult = {
   finishedAt?: string | null
   topics: InterviewTopicResult[]
   questions?: InterviewQuestionReport[]
+}
+
+export type LearningRoadmapTrend = 'IMPROVING' | 'DECLINING' | 'STABLE' | 'NEW'
+export type LearningRoadmapPriority = 'HIGH' | 'MEDIUM' | 'LOW'
+export type LearningRoadmapResourceType = 'ARTICLE' | 'DOC' | 'VIDEO' | 'PRACTICE' | string
+
+export type LearningRoadmapResource = {
+  title: string
+  url: string
+  type: LearningRoadmapResourceType
+  language: LocaleString
+}
+
+export type LocaleString = 'en' | 'ru' | string
+
+export type LearningRoadmapTopic = {
+  topic: string
+  score?: number
+  currentScore?: number
+  previousScore?: number | null
+  trend?: LearningRoadmapTrend
+  priority?: LearningRoadmapPriority
+  reason: string
+  recommendedActions: string[]
+  resources: LearningRoadmapResource[]
+}
+
+export type LearningRoadmapResponse = {
+  sessionId?: string
+  userId?: string
+  language: LocaleString
+  updatedAt?: string
+  sourceSessionIds?: string[]
+  summary: string
+  priorityTopics: LearningRoadmapTopic[]
 }
 
 export type OrganizationStatus = 'ACTIVE' | 'ARCHIVED'

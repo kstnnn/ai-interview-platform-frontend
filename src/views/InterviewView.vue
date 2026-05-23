@@ -167,6 +167,7 @@ import { useVoiceInterview } from '@/composables/useVoiceInterview'
 import { useInterviewWebSocket } from '@/composables/useInterviewWebSocket'
 import { useAppSession } from '@/composables/useAppSession'
 import { getAccessToken } from '@/auth/zitadel'
+import { getInterviewSession } from '@/api/interview'
 import { useI18n } from '@/i18n'
 
 const route = useRoute()
@@ -310,9 +311,6 @@ function leaveInterview() {
 }
 
 function goToResults() {
-  if (interviewResult.value) {
-    localStorage.setItem(`interviewResult_${sessionId}`, JSON.stringify(interviewResult.value))
-  }
   void router.push(`/results/${sessionId}`)
 }
 
@@ -333,9 +331,6 @@ watch(status, (newStatus) => {
     if (timerId.value !== null) {
       window.clearInterval(timerId.value)
     }
-    if (interviewResult.value) {
-      localStorage.setItem(`interviewResult_${sessionId}`, JSON.stringify(interviewResult.value))
-    }
   }
 })
 
@@ -343,6 +338,12 @@ onMounted(async () => {
   const token = await getAccessToken()
   if (!token) {
     void router.push('/sign-in')
+    return
+  }
+
+  const session = await getInterviewSession(sessionId)
+  if (session.status === 'COMPLETED' || session.status === 'CANCELLED') {
+    void router.replace(`/results/${sessionId}`)
     return
   }
 

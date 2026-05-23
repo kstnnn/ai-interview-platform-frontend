@@ -36,11 +36,11 @@
               <p class="mt-1 text-sm text-muted-foreground">{{ t('userWorkspace.scoreLabel') }}</p>
             </div>
             <p class="mt-5 text-sm leading-relaxed text-muted-foreground">
-              {{ latestCompleted ? t('userWorkspace.feedbackFromLatest') : t('userWorkspace.noFeedbackYet') }}
+              {{ latestMockCompleted ? t('userWorkspace.feedbackFromLatest') : t('userWorkspace.noFeedbackYet') }}
             </p>
-            <RouterLink :to="latestCompleted ? `/results/${latestCompleted.sessionId}` : '/user/roadmap'"
+            <RouterLink :to="latestMockCompleted ? `/results/${latestMockCompleted.sessionId}` : '/user/roadmap'"
               class="mt-5 inline-flex text-sm font-semibold text-primary">
-              {{ latestCompleted ? t('userWorkspace.openLatestReport') : t('userWorkspace.openRecommendations') }}
+              {{ latestMockCompleted ? t('userWorkspace.openLatestReport') : t('userWorkspace.openRecommendations') }}
             </RouterLink>
           </BaseCard>
         </section>
@@ -120,13 +120,19 @@
 
           <BaseCard class="p-8">
             <h2 class="text-xl font-bold text-foreground">{{ t('userWorkspace.recommendedLearning') }}</h2>
-            <div class="mt-5 grid gap-4 sm:grid-cols-2">
-              <div v-for="item in recommendations.slice(0, 2)" :key="item.id" class="rounded-[1.5rem] bg-muted/50 p-5">
-                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{{ item.type }}</p>
-                <h3 class="mt-2 font-bold text-foreground">{{ item.title }}</h3>
-                <p class="mt-2 text-sm leading-relaxed text-muted-foreground">{{ item.reason }}</p>
+            <div v-if="isLoadingRoadmap" class="mt-5 rounded-[1.5rem] bg-muted/50 p-5 text-sm text-muted-foreground">{{ t('learningRoadmap.loading') }}</div>
+            <div v-else-if="roadmapError" class="mt-5 rounded-[1.5rem] bg-destructive/10 p-5 text-sm text-destructive">{{ roadmapError }}</div>
+            <div v-else-if="roadmapPreview.length" class="mt-5 grid gap-4 sm:grid-cols-2">
+              <div v-for="topic in roadmapPreview" :key="topic.topic" class="rounded-[1.5rem] bg-muted/50 p-5">
+                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{{ topic.topic }}</p>
+                <h3 class="mt-2 font-bold text-foreground">{{ scoreLabel(topic.currentScore ?? topic.score) }}</h3>
+                <p class="mt-2 text-sm leading-relaxed text-muted-foreground">{{ topic.reason }}</p>
               </div>
             </div>
+            <p v-else class="mt-5 rounded-[1.5rem] bg-muted/50 p-5 text-sm leading-relaxed text-muted-foreground">{{ roadmap?.summary || t('userWorkspace.realRoadmapEmpty') }}</p>
+            <RouterLink to="/user/roadmap" class="mt-5 inline-flex text-sm font-semibold text-primary">
+              {{ t('learningRoadmap.openLatestRoadmap') }}
+            </RouterLink>
           </BaseCard>
         </section>
 
@@ -143,7 +149,7 @@
                     <p class="font-semibold text-foreground">{{ t('applications.application') }} #{{ application.applicationId.slice(0, 8) }}</p>
                     <p class="mt-1 text-sm text-muted-foreground">{{ applicationStatusLabel(application.status) }} · {{ new Date(application.createdAt).toLocaleDateString() }}</p>
                   </div>
-                  <RouterLink :to="`/candidate/interview/${application.interviewSessionId}`" class="text-sm font-semibold text-primary">{{ t('applications.openInterview') }}</RouterLink>
+                  <RouterLink :to="`/results/${application.interviewSessionId}`" class="text-sm font-semibold text-primary">{{ t('applications.openStatus') }}</RouterLink>
                 </div>
               </div>
             </div>
@@ -164,23 +170,24 @@ import AppFooter from '@/components/AppFooter.vue'
 import AppHeader from '@/components/AppHeader.vue'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseCard from '@/components/BaseCard.vue'
-import { getMyInterviews } from '@/api/interview'
+import { getMyInterviews, getUserLearningRoadmap } from '@/api/interview'
 import { getMyApplications } from '@/api/organization'
-import { getLocalizedPresets, getLocalizedRecommendations } from '@/data/mock-data'
 import { useI18n } from '@/i18n'
-import type { InterviewSessionStatus, InterviewSessionSummary, VacancyApplicationSummary } from '@/types/api'
+import type { InterviewSessionStatus, InterviewSessionSummary, LearningRoadmapResponse, VacancyApplicationSummary } from '@/types/api'
 
-const { t } = useI18n()
+const { locale, t } = useI18n()
 const interviewSessions = ref<InterviewSessionSummary[]>([])
 const applications = ref<VacancyApplicationSummary[]>([])
+const roadmap = ref<LearningRoadmapResponse | null>(null)
 const isLoadingSessions = ref(true)
 const isLoadingApplications = ref(true)
+const isLoadingRoadmap = ref(true)
 const sessionsError = ref('')
 const applicationsError = ref('')
-const presets = computed(() => getLocalizedPresets())
-const recommendations = computed(() => getLocalizedRecommendations())
-const latestCompleted = computed(() => interviewSessions.value.find((session) => session.status === 'COMPLETED') ?? null)
-const latestScore = computed(() => latestCompleted.value?.sessionConfidence === null || !latestCompleted.value ? '—' : Math.round(latestCompleted.value.sessionConfidence * 100))
+const roadmapError = ref('')
+const latestMockCompleted = computed(() => interviewSessions.value.find((session) => session.status === 'COMPLETED' && session.sessionType === 'MOCK') ?? null)
+const latestScore = computed(() => latestMockCompleted.value?.sessionConfidence === null || !latestMockCompleted.value ? '—' : Math.round(latestMockCompleted.value.sessionConfidence * 100))
+const roadmapPreview = computed(() => roadmap.value?.priorityTopics.slice(0, 2) ?? [])
 
 onMounted(async () => {
   try {
@@ -197,6 +204,14 @@ onMounted(async () => {
     applicationsError.value = err instanceof Error ? err.message : t('applications.loadFailed')
   } finally {
     isLoadingApplications.value = false
+  }
+
+  try {
+    roadmap.value = await getUserLearningRoadmap(locale.value)
+  } catch (err) {
+    roadmapError.value = err instanceof Error ? err.message : t('learningRoadmap.loadFailed')
+  } finally {
+    isLoadingRoadmap.value = false
   }
 })
 
@@ -217,20 +232,26 @@ function statusLabel(status: InterviewSessionStatus) {
 }
 
 function sessionActionTo(session: InterviewSessionSummary) {
-  if (session.status === 'COMPLETED') return `/results/${session.sessionId}`
+  if (session.status === 'COMPLETED' && session.sessionType === 'MOCK') return `/results/${session.sessionId}`
+  if (session.status === 'COMPLETED') return '/user'
   if (session.status === 'IN_PROGRESS') return `/candidate/interview/${session.sessionId}`
   if (session.status === 'CREATED') return `/candidate/interview/${session.sessionId}`
-  return `/results/${session.sessionId}`
+  return '/user'
 }
 
 function sessionActionLabel(session: InterviewSessionSummary) {
-  if (session.status === 'COMPLETED') return t('userWorkspace.viewResults')
+  if (session.status === 'COMPLETED' && session.sessionType === 'MOCK') return t('userWorkspace.viewResults')
+  if (session.status === 'COMPLETED') return t('userWorkspace.statusCompleted')
   if (session.status === 'IN_PROGRESS') return t('userWorkspace.continueInterview')
   if (session.status === 'CREATED') return t('userWorkspace.startInterview')
-  return t('userWorkspace.viewResults')
+  return t('userWorkspace.statusCancelled')
 }
 
 function applicationStatusLabel(status: string) {
   return t(`applications.status.${status}` as any)
+}
+
+function scoreLabel(score: number | null | undefined) {
+  return typeof score === 'number' ? `${Math.round(score * 100)}%` : '—'
 }
 </script>

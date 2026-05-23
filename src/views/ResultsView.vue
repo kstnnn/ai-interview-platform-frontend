@@ -5,6 +5,25 @@
     </BaseCard>
   </div>
 
+  <div v-else-if="isVacancyApplication" class="flex min-h-screen flex-col bg-background">
+    <AppHeader />
+    <main class="flex flex-1 items-center justify-center px-4 py-12 text-center sm:px-6 lg:px-8">
+      <BaseCard class="max-w-lg p-8">
+        <h1 class="text-2xl font-bold text-foreground">{{ vacancyStatusTitle }}</h1>
+        <p class="mt-3 leading-relaxed text-muted-foreground">{{ vacancyStatusDescription }}</p>
+        <div class="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+          <RouterLink v-if="canContinueVacancyInterview" :to="`/candidate/interview/${sessionId}`">
+            <BaseButton>{{ t('userWorkspace.continueInterview') }}</BaseButton>
+          </RouterLink>
+          <RouterLink to="/user">
+            <BaseButton variant="outline">{{ t('results.backToWorkspace') }}</BaseButton>
+          </RouterLink>
+        </div>
+      </BaseCard>
+    </main>
+    <AppFooter />
+  </div>
+
   <div v-else-if="result" class="flex min-h-screen flex-col bg-background">
     <AppHeader />
 
@@ -20,7 +39,7 @@
             <div>
               <h2 class="font-semibold text-foreground">{{ t('results.fullReportFailed') }}</h2>
               <p class="mt-1 text-sm text-muted-foreground">
-                {{ reportSource === 'fallback' ? t('results.localFallbackShown') : reportError }}
+                  {{ reportError }}
               </p>
             </div>
             <BaseButton variant="outline" :disabled="isRetrying" @click="loadReport">
@@ -137,6 +156,43 @@
           </div>
         </BaseCard>
 
+        <BaseCard class="mb-8 p-8">
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 class="text-xl font-bold text-foreground">{{ t('results.sessionRoadmapTitle') }}</h2>
+              <p class="mt-1 text-sm text-muted-foreground">{{ roadmap?.summary || t('results.sessionRoadmapSubtitle') }}</p>
+            </div>
+            <BaseButton v-if="roadmapError" variant="outline" :disabled="isLoadingRoadmap" @click="loadRoadmap">
+              {{ isLoadingRoadmap ? t('results.loadingRoadmap') : t('results.retryRoadmap') }}
+            </BaseButton>
+          </div>
+          <div v-if="isLoadingRoadmap" class="mt-6 rounded-[1.5rem] bg-muted/40 p-6 text-sm text-muted-foreground">{{ t('results.loadingRoadmap') }}</div>
+          <div v-else-if="roadmapError" class="mt-6 rounded-[1.5rem] bg-warning/10 p-6 text-sm text-foreground">{{ roadmapError }}</div>
+          <div v-else-if="roadmap?.priorityTopics.length" class="mt-6 space-y-4">
+            <div v-for="topic in roadmap.priorityTopics" :key="topic.topic" class="rounded-[1.5rem] border border-border/60 p-5">
+              <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h3 class="font-semibold text-foreground">{{ topicLabel(topic.topic) }}</h3>
+                  <p class="mt-2 text-sm leading-relaxed text-muted-foreground">{{ topic.reason }}</p>
+                </div>
+                <span class="text-sm font-bold text-primary">{{ roadmapScoreLabel(topic.score ?? topic.currentScore) }}</span>
+              </div>
+              <div v-if="topic.recommendedActions.length" class="mt-4">
+                <h4 class="text-sm font-semibold text-foreground">{{ t('results.recommendedActions') }}</h4>
+                <ul class="mt-2 space-y-2 text-sm text-muted-foreground">
+                  <li v-for="action in topic.recommendedActions" :key="action">{{ action }}</li>
+                </ul>
+              </div>
+              <div v-if="topic.resources.length" class="mt-4 flex flex-wrap gap-2">
+                <a v-for="resource in topic.resources" :key="resource.url" :href="resource.url" target="_blank" rel="noreferrer" class="rounded-full border border-border px-3 py-1 text-xs font-semibold text-primary hover:bg-primary/5">
+                  {{ resource.title }} · {{ resource.type }}
+                </a>
+              </div>
+            </div>
+          </div>
+          <div v-else class="mt-6 rounded-[1.5rem] bg-muted/40 p-6 text-sm text-muted-foreground">{{ t('results.noRoadmap') }}</div>
+        </BaseCard>
+
         <div class="flex flex-col gap-3 sm:flex-row sm:justify-between">
           <RouterLink to="/user">
             <BaseButton variant="outline">
@@ -146,6 +202,9 @@
           </RouterLink>
           <RouterLink to="/user/mock-interview/new">
             <BaseButton>{{ t('results.newInterview') }}</BaseButton>
+          </RouterLink>
+          <RouterLink to="/user/roadmap">
+            <BaseButton variant="outline">{{ t('results.openFullRoadmap') }}</BaseButton>
           </RouterLink>
         </div>
       </div>
@@ -173,28 +232,33 @@ import AppFooter from '@/components/AppFooter.vue'
 import AppHeader from '@/components/AppHeader.vue'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseCard from '@/components/BaseCard.vue'
-import { getInterviewReport } from '@/api/interview'
-import type { InterviewResult } from '@/types/api'
+import { getInterviewReport, getInterviewSession, getLearningRoadmap } from '@/api/interview'
+import type { InterviewResult, InterviewSessionDetails, LearningRoadmapResponse } from '@/types/api'
 import { useI18n } from '@/i18n'
 
 const route = useRoute()
 const { locale, t } = useI18n()
 const sessionId = String(route.params.sessionId ?? '')
 const result = ref<InterviewResult | null>(null)
+const sessionDetails = ref<InterviewSessionDetails | null>(null)
+const roadmap = ref<LearningRoadmapResponse | null>(null)
 const isLoading = ref(true)
 const isRetrying = ref(false)
+const isLoadingRoadmap = ref(false)
 const reportError = ref('')
-const reportSource = ref<'backend' | 'fallback' | null>(null)
-
-function readFallbackResult() {
-  const stored = localStorage.getItem(`interviewResult_${sessionId}`)
-  if (!stored) return null
-  try {
-    return JSON.parse(stored) as InterviewResult
-  } catch {
-    return null
-  }
-}
+const roadmapError = ref('')
+const isVacancyApplication = computed(() => sessionDetails.value?.sessionType === 'VACANCY_APPLICATION')
+const canContinueVacancyInterview = computed(() => sessionDetails.value?.status === 'CREATED' || sessionDetails.value?.status === 'IN_PROGRESS')
+const vacancyStatusTitle = computed(() => {
+  if (canContinueVacancyInterview.value) return t('results.vacancyInProgressTitle')
+  if (sessionDetails.value?.status === 'CANCELLED') return t('results.vacancyCancelledTitle')
+  return t('results.vacancyCompletedTitle')
+})
+const vacancyStatusDescription = computed(() => {
+  if (canContinueVacancyInterview.value) return t('results.vacancyInProgressDesc')
+  if (sessionDetails.value?.status === 'CANCELLED') return t('results.vacancyCancelledDesc')
+  return t('results.vacancyCompletedDesc')
+})
 
 async function loadReport() {
   isRetrying.value = !isLoading.value
@@ -202,20 +266,40 @@ async function loadReport() {
 
   try {
     result.value = await getInterviewReport(sessionId)
-    reportSource.value = 'backend'
-    localStorage.setItem(`interviewResult_${sessionId}`, JSON.stringify(result.value))
   } catch (err) {
     reportError.value = err instanceof Error ? err.message : t('results.fullReportFailed')
-    result.value = readFallbackResult()
-    reportSource.value = result.value ? 'fallback' : null
+    result.value = null
   } finally {
     isLoading.value = false
     isRetrying.value = false
   }
 }
 
+async function loadRoadmap() {
+  isLoadingRoadmap.value = true
+  roadmapError.value = ''
+  try {
+    roadmap.value = await getLearningRoadmap(sessionId, locale.value)
+  } catch (err) {
+    roadmapError.value = err instanceof Error ? err.message : t('results.roadmapFailed')
+  } finally {
+    isLoadingRoadmap.value = false
+  }
+}
+
 onMounted(async () => {
-  await loadReport()
+  try {
+    sessionDetails.value = await getInterviewSession(sessionId)
+    if (sessionDetails.value.sessionType === 'MOCK') {
+      await loadReport()
+      if (result.value) await loadRoadmap()
+      return
+    }
+  } catch (err) {
+    reportError.value = err instanceof Error ? err.message : t('results.fullReportFailed')
+  } finally {
+    isLoading.value = false
+  }
 })
 
 const topicLabels: Record<string, { en: string; ru: string }> = {
@@ -258,6 +342,10 @@ function scoreLabel(score: number | null | undefined) {
 
 function questionSourceLabel(sourceType: string) {
   return t(`results.sourceType.${sourceType}` as any)
+}
+
+function roadmapScoreLabel(score: number | null | undefined) {
+  return typeof score === 'number' ? `${Math.round(score * 100)}%` : '—'
 }
 
 function formatScore10(score: number | null | undefined) {

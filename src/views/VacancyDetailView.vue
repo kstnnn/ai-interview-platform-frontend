@@ -146,8 +146,8 @@
                       <p class="mt-1 text-sm text-muted-foreground">{{ applicationStatusLabel(application.status) }} · {{ formatDate(application.createdAt) }}</p>
                       <p v-if="application.coverLetter" class="mt-3 whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{{ application.coverLetter }}</p>
                     </div>
-                    <RouterLink :to="`/candidate/interview/${application.interviewSessionId}`">
-                      <BaseButton size="sm" variant="outline">{{ t('applications.openInterview') }}</BaseButton>
+                    <RouterLink :to="`/results/${application.interviewSessionId}`">
+                      <BaseButton size="sm" variant="outline">{{ t('applications.openStatus') }}</BaseButton>
                     </RouterLink>
                   </div>
                 </div>

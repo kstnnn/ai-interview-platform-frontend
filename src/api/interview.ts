@@ -1,5 +1,5 @@
 import { interviewRequest } from '@/api/client'
-import type { CreateInterviewRequest, CreateInterviewResponse, InterviewResult, InterviewSessionSummary } from '@/types/api'
+import type { CreateInterviewRequest, CreateInterviewResponse, InterviewResult, InterviewSessionDetails, InterviewSessionSummary, LearningRoadmapResponse } from '@/types/api'
 
 export function createInterview(data: CreateInterviewRequest) {
   return interviewRequest<CreateInterviewResponse>('/interviews', {
@@ -10,6 +10,24 @@ export function createInterview(data: CreateInterviewRequest) {
 
 export function getInterviewReport(sessionId: string) {
   return interviewRequest<InterviewResult>(`/interviews/${sessionId}/report`)
+}
+
+export function getInterviewSession(sessionId: string) {
+  return interviewRequest<InterviewSessionDetails>(`/interviews/${sessionId}`)
+}
+
+export function getLearningRoadmap(sessionId: string, language: 'en' | 'ru') {
+  return interviewRequest<LearningRoadmapResponse>(`/interviews/${sessionId}/learning-roadmap`, {
+    query: { language },
+    headers: { 'Accept-Language': language },
+  })
+}
+
+export function getUserLearningRoadmap(language: 'en' | 'ru') {
+  return interviewRequest<LearningRoadmapResponse>('/interviews/learning-roadmap', {
+    query: { language },
+    headers: { 'Accept-Language': language },
+  })
 }
 
 export function getMyInterviews() {

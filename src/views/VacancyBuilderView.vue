@@ -84,6 +84,24 @@
                 </div>
               </label>
 
+              <div class="rounded-[1.5rem] border border-border/60 p-5">
+                <h2 class="text-lg font-bold text-foreground">{{ t('vacancyInterviewSettings.title') }}</h2>
+                <div class="mt-4 grid gap-4 sm:grid-cols-3">
+                  <label class="space-y-2">
+                    <span class="block text-sm font-semibold text-foreground">{{ t('vacancyInterviewSettings.minPrimaryQuestions') }}</span>
+                    <input v-model.number="form.minPrimaryQuestions" min="1" max="30" type="number" class="h-12 w-full rounded-full border border-border bg-input px-4 outline-none focus:border-primary" />
+                  </label>
+                  <label class="space-y-2">
+                    <span class="block text-sm font-semibold text-foreground">{{ t('vacancyInterviewSettings.maxPrimaryQuestions') }}</span>
+                    <input v-model.number="form.maxPrimaryQuestions" min="1" max="30" type="number" class="h-12 w-full rounded-full border border-border bg-input px-4 outline-none focus:border-primary" />
+                  </label>
+                  <label class="space-y-2">
+                    <span class="block text-sm font-semibold text-foreground">{{ t('vacancyInterviewSettings.maxFollowUpsPerPrimary') }}</span>
+                    <input v-model.number="form.maxFollowUpsPerPrimary" min="0" max="2" type="number" class="h-12 w-full rounded-full border border-border bg-input px-4 outline-none focus:border-primary" />
+                  </label>
+                </div>
+              </div>
+
               <p v-if="apiError" class="rounded-[1.5rem] bg-destructive/10 p-4 text-sm text-destructive">{{ apiError }}</p>
 
               <BaseButton tag="button" :disabled="isCreating">
@@ -97,7 +115,7 @@
               <h2 class="text-lg font-bold text-foreground">{{ t('vacancyBuilder.payloadTitle') }}</h2>
               <div class="mt-4 rounded-[1.5rem] bg-muted/50 p-4 font-mono text-xs leading-relaxed text-muted-foreground">
                 POST /organizations/{{ organization.id }}/vacancies<br />
-                title, description, requirements, location, employmentType, workFormat, level, technologyKeys
+                title, description, requirements, location, employmentType, workFormat, level, technologyKeys, minPrimaryQuestions, maxPrimaryQuestions, maxFollowUpsPerPrimary
               </div>
             </BaseCard>
           </div>
@@ -141,6 +159,9 @@ const form = reactive({
   workFormat: 'REMOTE' as WorkFormat,
   level: 'MIDDLE' as VacancyLevel,
   technologyKeys: [] as string[],
+  minPrimaryQuestions: 5,
+  maxPrimaryQuestions: 8,
+  maxFollowUpsPerPrimary: 1,
 })
 
 function toggleTechnology(tech: string) {
@@ -167,6 +188,9 @@ async function submitVacancy() {
       workFormat: form.workFormat,
       level: form.level,
       technologyKeys: form.technologyKeys,
+      minPrimaryQuestions: form.minPrimaryQuestions,
+      maxPrimaryQuestions: form.maxPrimaryQuestions,
+      maxFollowUpsPerPrimary: form.maxFollowUpsPerPrimary,
     })
     await router.push(`/business/vacancies/${created.id}`)
   } catch (err) {

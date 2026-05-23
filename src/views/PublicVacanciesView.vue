@@ -55,7 +55,6 @@
               <p>{{ t('common.level') }}: {{ vacancyLevelLabel(vacancy.level, t) }}</p>
               <p>{{ employmentTypeLabel(vacancy.employmentType, t) }} · {{ workFormatLabel(vacancy.workFormat, t) }}</p>
             </div>
-
             <div class="mt-5 flex gap-3">
               <RouterLink :to="`/vacancies/${vacancy.id}`" class="flex-1">
                 <BaseButton class="w-full" variant="outline">{{ t('common.open') }}</BaseButton>

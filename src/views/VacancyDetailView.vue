@@ -29,6 +29,10 @@
                 <InfoItem :label="t('vacancyBuilder.employmentType')" :value="employmentTypeLabel(vacancy.employmentType, t)" />
                 <InfoItem :label="t('vacancyBuilder.workFormat')" :value="workFormatLabel(vacancy.workFormat, t)" />
                 <InfoItem :label="t('vacancyBuilder.location')" :value="vacancy.location || '—'" />
+                <InfoItem :label="t('vacancyInterviewSettings.minPrimaryQuestions')" :value="String(vacancy.minPrimaryQuestions)" />
+                <InfoItem :label="t('vacancyInterviewSettings.maxPrimaryQuestions')" :value="String(vacancy.maxPrimaryQuestions)" />
+                <InfoItem :label="t('vacancyInterviewSettings.maxFollowUpsPerPrimary')" :value="String(vacancy.maxFollowUpsPerPrimary)" />
+                <InfoItem :label="t('vacancyInterviewSettings.estimatedMaxTotalQuestions')" :value="String(vacancy.estimatedMaxTotalQuestions)" />
                 <div>
                   <p class="text-sm font-medium text-muted-foreground">{{ t('common.stack') }}</p>
                   <div class="mt-2 flex flex-wrap gap-2">
@@ -36,6 +40,26 @@
                   </div>
                 </div>
               </div>
+              <form class="mt-6 space-y-4 rounded-[1.5rem] border border-border/60 p-5" @submit.prevent="submitInterviewSettings">
+                <h3 class="font-semibold text-foreground">{{ t('vacancyInterviewSettings.editTitle') }}</h3>
+                <div class="grid gap-4">
+                  <label class="space-y-2">
+                    <span class="block text-sm font-semibold text-foreground">{{ t('vacancyInterviewSettings.minPrimaryQuestions') }}</span>
+                    <input v-model.number="settingsForm.minPrimaryQuestions" min="1" max="30" type="number" class="h-11 w-full rounded-full border border-border bg-input px-4 text-sm outline-none focus:border-primary" />
+                  </label>
+                  <label class="space-y-2">
+                    <span class="block text-sm font-semibold text-foreground">{{ t('vacancyInterviewSettings.maxPrimaryQuestions') }}</span>
+                    <input v-model.number="settingsForm.maxPrimaryQuestions" min="1" max="30" type="number" class="h-11 w-full rounded-full border border-border bg-input px-4 text-sm outline-none focus:border-primary" />
+                  </label>
+                  <label class="space-y-2">
+                    <span class="block text-sm font-semibold text-foreground">{{ t('vacancyInterviewSettings.maxFollowUpsPerPrimary') }}</span>
+                    <input v-model.number="settingsForm.maxFollowUpsPerPrimary" min="0" max="2" type="number" class="h-11 w-full rounded-full border border-border bg-input px-4 text-sm outline-none focus:border-primary" />
+                  </label>
+                </div>
+                <p v-if="settingsMessage" class="text-sm text-muted-foreground">{{ settingsMessage }}</p>
+                <p v-if="settingsError" class="text-sm text-destructive">{{ settingsError }}</p>
+                <BaseButton tag="button" size="sm" :disabled="isSavingSettings">{{ isSavingSettings ? t('common.saving') : t('vacancyInterviewSettings.save') }}</BaseButton>
+              </form>
             </BaseCard>
           </div>
 
@@ -155,7 +179,7 @@ import AppFooter from '@/components/AppFooter.vue'
 import AppHeader from '@/components/AppHeader.vue'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseCard from '@/components/BaseCard.vue'
-import { closeVacancy, createVacancyQuestion, deleteVacancyQuestion, draftVacancy, getVacancy, getVacancyApplications, getVacancyQuestions, publishVacancy, updateVacancyQuestion } from '@/api/organization'
+import { closeVacancy, createVacancyQuestion, deleteVacancyQuestion, draftVacancy, getVacancy, getVacancyApplications, getVacancyQuestions, publishVacancy, updateVacancy, updateVacancyQuestion } from '@/api/organization'
 import { useI18n } from '@/i18n'
 import type { VacancyApplicationSummary, VacancyQuestionResponse, VacancyResponse } from '@/types/api'
 import { employmentTypeLabel, vacancyLevelLabel, vacancyStatusLabel, workFormatLabel } from '@/utils/vacancy-labels'
@@ -170,18 +194,30 @@ const isUpdating = ref(false)
 const isLoadingQuestions = ref(false)
 const isLoadingApplications = ref(false)
 const isSavingQuestion = ref(false)
+const isSavingSettings = ref(false)
 const questionError = ref('')
+const settingsError = ref('')
+const settingsMessage = ref('')
 const editingQuestionId = ref('')
 const questionForm = reactive({ questionText: '', expectedAnswer: '', evaluationRubric: '', topic: '', required: true, displayOrder: 1 })
+const settingsForm = reactive({ minPrimaryQuestions: 5, maxPrimaryQuestions: 8, maxFollowUpsPerPrimary: 1 })
 
 async function loadVacancy() {
   isLoading.value = true
   try {
     vacancy.value = await getVacancy(String(route.params.vacancyId ?? ''))
+    syncSettingsForm()
     await Promise.all([loadQuestions(), loadApplications()])
   } finally {
     isLoading.value = false
   }
+}
+
+function syncSettingsForm() {
+  if (!vacancy.value) return
+  settingsForm.minPrimaryQuestions = vacancy.value.minPrimaryQuestions
+  settingsForm.maxPrimaryQuestions = vacancy.value.maxPrimaryQuestions
+  settingsForm.maxFollowUpsPerPrimary = vacancy.value.maxFollowUpsPerPrimary
 }
 
 async function loadQuestions() {
@@ -217,6 +253,26 @@ async function changeStatus(action: 'draft' | 'publish' | 'close') {
     }
   } finally {
     isUpdating.value = false
+  }
+}
+
+async function submitInterviewSettings() {
+  if (!vacancy.value) return
+  isSavingSettings.value = true
+  settingsError.value = ''
+  settingsMessage.value = ''
+  try {
+    vacancy.value = await updateVacancy(vacancy.value.id, {
+      minPrimaryQuestions: settingsForm.minPrimaryQuestions,
+      maxPrimaryQuestions: settingsForm.maxPrimaryQuestions,
+      maxFollowUpsPerPrimary: settingsForm.maxFollowUpsPerPrimary,
+    })
+    syncSettingsForm()
+    settingsMessage.value = t('vacancyInterviewSettings.saved')
+  } catch (err) {
+    settingsError.value = err instanceof Error ? err.message : t('vacancyInterviewSettings.saveFailed')
+  } finally {
+    isSavingSettings.value = false
   }
 }
 

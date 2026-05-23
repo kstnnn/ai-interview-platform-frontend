@@ -145,6 +145,10 @@ export type VacancyResponse = {
   status: VacancyStatus
   createdByUserId: string
   technologyKeys: string[]
+  minPrimaryQuestions: number
+  maxPrimaryQuestions: number
+  maxFollowUpsPerPrimary: number
+  estimatedMaxTotalQuestions: number
   createdAt: string
   updatedAt: string
 }
@@ -158,6 +162,9 @@ export type CreateVacancyRequest = {
   workFormat: WorkFormat
   level: VacancyLevel
   technologyKeys?: string[]
+  minPrimaryQuestions?: number
+  maxPrimaryQuestions?: number
+  maxFollowUpsPerPrimary?: number
 }
 
 export type UpdateVacancyRequest = Partial<CreateVacancyRequest>

@@ -88,6 +88,7 @@
                       <span class="rounded-full bg-background px-3 py-1">#{{ question.questionIndex || question.roundNumber }}</span>
                       <span class="rounded-full bg-background px-3 py-1">{{ question.questionType }}</span>
                       <span v-if="question.difficulty" class="rounded-full bg-background px-3 py-1">{{ question.difficulty }}</span>
+                      <span v-if="question.sourceType" class="rounded-full bg-primary/10 px-3 py-1 text-primary">{{ questionSourceLabel(question.sourceType) }}</span>
                     </div>
                     <h3 class="mt-3 font-semibold text-foreground">{{ question.questionText }}</h3>
                     <p class="mt-1 text-xs text-muted-foreground">
@@ -253,6 +254,10 @@ function normalizedPercent(score: number | null | undefined) {
 function scoreLabel(score: number | null | undefined) {
   const percent = normalizedPercent(score)
   return percent === null ? t('results.notEvaluated') : `${percent}%`
+}
+
+function questionSourceLabel(sourceType: string) {
+  return t(`results.sourceType.${sourceType}` as any)
 }
 
 function formatScore10(score: number | null | undefined) {

@@ -12,14 +12,23 @@ export class ApiError extends Error {
   }
 }
 
-function createApiClient(baseURL: string) {
+function createApiClient(baseURL: string, requireAuth: boolean) {
   return ofetch.create({
     baseURL,
     async onRequest({ options }) {
       const token = await getAccessToken()
-      if (!token) throw new ApiError('Missing authentication token.', 401)
+      const accessToken = typeof token === 'string' ? token.trim() : ''
+
+      if (!accessToken) {
+        if (requireAuth) {
+          throw new ApiError('Missing authentication token.', 401)
+        }
+
+        return
+      }
+
       const existingHeaders = options.headers as any
-      options.headers = { ...existingHeaders, Authorization: `Bearer ${token}` }
+      options.headers = { ...existingHeaders, Authorization: `Bearer ${accessToken}` }
     },
     onResponseError({ response }) {
       const data = response._data as { message?: unknown; error?: unknown } | undefined
@@ -34,13 +43,30 @@ function createApiClient(baseURL: string) {
   })
 }
 
-const userApiClient = createApiClient(import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api/v1')
-const interviewApiClient = createApiClient(import.meta.env.VITE_INTERVIEW_API_BASE_URL ?? 'http://localhost:8081/api/v1')
+const userApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api/v1'
+const organizationApiBaseUrl = import.meta.env.VITE_ORGANIZATION_API_BASE_URL ?? 'http://localhost:8082/api/v1'
+const userApiClient = createApiClient(userApiBaseUrl, true)
+const publicUserApiClient = createApiClient(userApiBaseUrl, false)
+const interviewApiClient = createApiClient(import.meta.env.VITE_INTERVIEW_API_BASE_URL ?? 'http://localhost:8081/api/v1', true)
+const organizationApiClient = createApiClient(organizationApiBaseUrl, true)
+const publicOrganizationApiClient = createApiClient(organizationApiBaseUrl, false)
 
 export async function apiRequest<T>(path: string, options?: FetchOptions<'json'>) {
   return userApiClient<T>(path, options)
 }
 
+export async function publicApiRequest<T>(path: string, options?: FetchOptions<'json'>) {
+  return publicUserApiClient<T>(path, options)
+}
+
 export async function interviewRequest<T>(path: string, options?: FetchOptions<'json'>) {
   return interviewApiClient<T>(path, options)
+}
+
+export async function organizationRequest<T>(path: string, options?: FetchOptions<'json'>) {
+  return organizationApiClient<T>(path, options)
+}
+
+export async function publicOrganizationRequest<T>(path: string, options?: FetchOptions<'json'>) {
+  return publicOrganizationApiClient<T>(path, options)
 }

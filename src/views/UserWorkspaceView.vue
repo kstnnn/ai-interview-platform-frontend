@@ -129,6 +129,26 @@
             </div>
           </BaseCard>
         </section>
+
+        <section class="mt-6">
+          <BaseCard class="p-8">
+            <h2 class="text-xl font-bold text-foreground">{{ t('applications.myTitle') }}</h2>
+            <div class="mt-5 max-h-[360px] space-y-4 overflow-y-auto pr-2">
+              <div v-if="isLoadingApplications" class="rounded-[1.5rem] border border-border/60 p-4 text-sm text-muted-foreground">{{ t('applications.loading') }}</div>
+              <div v-else-if="applicationsError" class="rounded-[1.5rem] border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">{{ applicationsError }}</div>
+              <div v-else-if="applications.length === 0" class="rounded-[1.5rem] border border-border/60 p-4 text-sm text-muted-foreground">{{ t('applications.myEmpty') }}</div>
+              <div v-else v-for="application in applications" :key="application.applicationId" class="rounded-[1.5rem] border border-border/60 p-4">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p class="font-semibold text-foreground">{{ t('applications.application') }} #{{ application.applicationId.slice(0, 8) }}</p>
+                    <p class="mt-1 text-sm text-muted-foreground">{{ applicationStatusLabel(application.status) }} · {{ new Date(application.createdAt).toLocaleDateString() }}</p>
+                  </div>
+                  <RouterLink :to="`/candidate/interview/${application.interviewSessionId}`" class="text-sm font-semibold text-primary">{{ t('applications.openInterview') }}</RouterLink>
+                </div>
+              </div>
+            </div>
+          </BaseCard>
+        </section>
       </div>
     </main>
 
@@ -145,14 +165,18 @@ import AppHeader from '@/components/AppHeader.vue'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseCard from '@/components/BaseCard.vue'
 import { getMyInterviews } from '@/api/interview'
+import { getMyApplications } from '@/api/organization'
 import { getLocalizedPresets, getLocalizedRecommendations } from '@/data/mock-data'
 import { useI18n } from '@/i18n'
-import type { InterviewSessionStatus, InterviewSessionSummary } from '@/types/api'
+import type { InterviewSessionStatus, InterviewSessionSummary, VacancyApplicationSummary } from '@/types/api'
 
 const { t } = useI18n()
 const interviewSessions = ref<InterviewSessionSummary[]>([])
+const applications = ref<VacancyApplicationSummary[]>([])
 const isLoadingSessions = ref(true)
+const isLoadingApplications = ref(true)
 const sessionsError = ref('')
+const applicationsError = ref('')
 const presets = computed(() => getLocalizedPresets())
 const recommendations = computed(() => getLocalizedRecommendations())
 const latestCompleted = computed(() => interviewSessions.value.find((session) => session.status === 'COMPLETED') ?? null)
@@ -165,6 +189,14 @@ onMounted(async () => {
     sessionsError.value = err instanceof Error ? err.message : t('userWorkspace.loadAttemptsFailed')
   } finally {
     isLoadingSessions.value = false
+  }
+
+  try {
+    applications.value = await getMyApplications()
+  } catch (err) {
+    applicationsError.value = err instanceof Error ? err.message : t('applications.loadFailed')
+  } finally {
+    isLoadingApplications.value = false
   }
 })
 
@@ -196,5 +228,9 @@ function sessionActionLabel(session: InterviewSessionSummary) {
   if (session.status === 'IN_PROGRESS') return t('userWorkspace.continueInterview')
   if (session.status === 'CREATED') return t('userWorkspace.startInterview')
   return t('userWorkspace.viewResults')
+}
+
+function applicationStatusLabel(status: string) {
+  return t(`applications.status.${status}` as any)
 }
 </script>

@@ -44,7 +44,6 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { UserPlus } from 'lucide-vue-next'
 import AppFooter from '@/components/AppFooter.vue'
@@ -54,10 +53,6 @@ import BaseCard from '@/components/BaseCard.vue'
 import { useAuth } from '@/composables/useAuth'
 import { useI18n } from '@/i18n'
 
-const { error, initialize, isZitadelConfigured, register } = useAuth()
+const { error, isZitadelConfigured, register } = useAuth()
 const { t } = useI18n()
-
-onMounted(() => {
-  void initialize()
-})
 </script>

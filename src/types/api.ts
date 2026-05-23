@@ -90,6 +90,7 @@ export type InterviewQuestionReport = {
   totalScore: number | null
   feedback: string | null
   knowledgeGaps: string[]
+  sourceType?: 'QUESTION_BANK' | 'VACANCY_CUSTOM' | 'AI_FOLLOW_UP'
 }
 
 export type InterviewResult = {
@@ -104,3 +105,108 @@ export type InterviewResult = {
   topics: InterviewTopicResult[]
   questions?: InterviewQuestionReport[]
 }
+
+export type OrganizationStatus = 'ACTIVE' | 'ARCHIVED'
+export type VacancyStatus = 'DRAFT' | 'PUBLISHED' | 'CLOSED' | 'ARCHIVED'
+export type EmploymentType = 'FULL_TIME' | 'PART_TIME' | 'CONTRACT' | 'INTERNSHIP'
+export type WorkFormat = 'REMOTE' | 'HYBRID' | 'ONSITE'
+export type VacancyLevel = 'JUNIOR' | 'MIDDLE' | 'SENIOR'
+
+export type OrganizationResponse = {
+  id: string
+  ownerUserId: string
+  name: string
+  description: string | null
+  websiteUrl: string | null
+  logoUrl: string | null
+  status: OrganizationStatus
+  createdAt: string
+  updatedAt: string
+}
+
+export type CreateOrganizationRequest = {
+  name: string
+  description?: string | null
+  websiteUrl?: string | null
+  logoUrl?: string | null
+}
+
+export type VacancyResponse = {
+  id: string
+  organizationId: string
+  organizationName: string
+  title: string
+  description: string
+  requirements: string | null
+  location: string | null
+  employmentType: EmploymentType
+  workFormat: WorkFormat
+  level: VacancyLevel
+  status: VacancyStatus
+  createdByUserId: string
+  technologyKeys: string[]
+  minPrimaryQuestions: number
+  maxPrimaryQuestions: number
+  maxFollowUpsPerPrimary: number
+  estimatedMaxTotalQuestions: number
+  createdAt: string
+  updatedAt: string
+}
+
+export type CreateVacancyRequest = {
+  title: string
+  description: string
+  requirements?: string | null
+  location?: string | null
+  employmentType: EmploymentType
+  workFormat: WorkFormat
+  level: VacancyLevel
+  technologyKeys?: string[]
+  minPrimaryQuestions?: number
+  maxPrimaryQuestions?: number
+  maxFollowUpsPerPrimary?: number
+}
+
+export type UpdateVacancyRequest = Partial<CreateVacancyRequest>
+
+export type VacancyQuestionRequest = {
+  questionText: string
+  expectedAnswer?: string | null
+  evaluationRubric?: string | null
+  topic?: string | null
+  required: boolean
+  displayOrder: number
+}
+
+export type VacancyQuestionResponse = {
+  id: string
+  vacancyId: string
+  questionText: string
+  expectedAnswer: string | null
+  evaluationRubric: string | null
+  topic: string | null
+  required: boolean
+  displayOrder: number
+  active: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export type VacancyApplicationRequest = {
+  coverLetter?: string | null
+}
+
+export type ApplicationStatus = 'INTERVIEW_CREATED' | 'INTERVIEW_IN_PROGRESS' | 'INTERVIEW_COMPLETED' | 'REJECTED' | 'WITHDRAWN'
+
+export type VacancyApplicationResponse = {
+  applicationId: string
+  vacancyId: string
+  candidateUserId: string
+  status: ApplicationStatus
+  interviewSessionId: string
+  coverLetter: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export type VacancyApplicationSummary = VacancyApplicationResponse

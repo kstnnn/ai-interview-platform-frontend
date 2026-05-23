@@ -102,6 +102,7 @@ const router = createRouter({
       path: '/vacancies/:vacancyId/apply',
       name: 'public-vacancy-apply',
       component: () => import('@/views/PublicVacancyApplyView.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/candidate/join',
@@ -113,6 +114,11 @@ const router = createRouter({
       path: '/candidate/interview/:sessionId',
       name: 'candidate-interview',
       component: () => import('@/views/InterviewView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/interview/:sessionId',
+      redirect: (to) => ({ name: 'candidate-interview', params: { sessionId: to.params.sessionId } }),
       meta: { requiresAuth: true },
     },
     {

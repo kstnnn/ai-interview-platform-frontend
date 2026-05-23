@@ -21,15 +21,19 @@
           </RouterLink>
         </div>
 
-        <BaseCard class="overflow-hidden">
-          <div class="overflow-x-auto">
+        <BaseCard v-if="isLoading" class="p-8 text-center text-muted-foreground">{{ t('businessWorkspace.loading') }}</BaseCard>
+        <BaseCard v-else-if="error" class="p-8 text-center text-destructive">{{ error }}</BaseCard>
+        <BaseCard v-else-if="!organization" class="p-8 text-center text-muted-foreground">{{ t('businessWorkspace.createOrgTitle') }}</BaseCard>
+
+        <BaseCard v-else class="overflow-hidden">
+          <div v-if="vacancies.length === 0" class="p-8 text-center text-muted-foreground">{{ t('businessWorkspace.noVacancies') }}</div>
+          <div v-else class="overflow-x-auto">
             <table class="min-w-full text-left">
               <thead>
                 <tr class="border-b border-border text-sm text-muted-foreground">
                   <th class="px-6 py-4 font-medium">{{ t('th.vacancy') }}</th>
                   <th class="px-6 py-4 font-medium">{{ t('th.stack') }}</th>
-                  <th class="px-6 py-4 font-medium">{{ t('th.questions') }}</th>
-                  <th class="px-6 py-4 font-medium">{{ t('th.candidates') }}</th>
+                  <th class="px-6 py-4 font-medium">{{ t('vacancies.type') }}</th>
                   <th class="px-6 py-4 font-medium">{{ t('th.status') }}</th>
                   <th class="px-6 py-4 text-right font-medium">{{ t('th.action') }}</th>
                 </tr>
@@ -38,18 +42,15 @@
                 <tr v-for="vacancy in vacancies" :key="vacancy.id" class="border-b border-border/60 text-sm last:border-b-0">
                   <td class="px-6 py-5 align-top">
                     <div class="font-semibold text-foreground">{{ vacancy.title }}</div>
-                    <div class="text-xs text-muted-foreground">{{ vacancy.department }} · {{ vacancy.level }}</div>
+                    <div class="text-xs text-muted-foreground">{{ vacancyLevelLabel(vacancy.level, t) }} · {{ vacancy.location || t('vacancies.noLocation') }}</div>
                   </td>
                   <td class="px-6 py-5 align-top">
                     <div class="flex max-w-md flex-wrap gap-2">
-                      <span v-for="item in vacancy.stack" :key="item" class="rounded-full bg-muted px-3 py-1 text-xs font-semibold">{{ item }}</span>
+                      <span v-for="item in vacancy.technologyKeys" :key="item" class="rounded-full bg-muted px-3 py-1 text-xs font-semibold">{{ item }}</span>
                     </div>
                   </td>
-                  <td class="px-6 py-5 align-top text-muted-foreground">
-                    {{ vacancy.customQuestions.length ? t('vacancies.customAndBank').replace('{count}', String(vacancy.customQuestions.length)) : t('vacancies.customOnly') }}
-                  </td>
-                  <td class="px-6 py-5 align-top font-semibold text-foreground">{{ vacancy.candidateCount }}</td>
-                  <td class="px-6 py-5 align-top capitalize text-muted-foreground">{{ vacancy.status }}</td>
+                  <td class="px-6 py-5 align-top text-muted-foreground">{{ employmentTypeLabel(vacancy.employmentType, t) }} · {{ workFormatLabel(vacancy.workFormat, t) }}</td>
+                  <td class="px-6 py-5 align-top text-muted-foreground">{{ vacancyStatusLabel(vacancy.status, t) }}</td>
                   <td class="px-6 py-5 text-right align-top">
                     <RouterLink :to="`/business/vacancies/${vacancy.id}`">
                       <BaseButton variant="ghost" size="sm">{{ t('vacancies.open') }}</BaseButton>
@@ -68,16 +69,33 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ArrowLeft, Plus } from 'lucide-vue-next'
 import AppFooter from '@/components/AppFooter.vue'
 import AppHeader from '@/components/AppHeader.vue'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseCard from '@/components/BaseCard.vue'
-import { getLocalizedVacancies } from '@/data/mock-data'
+import { getMyOrganizations, getOrganizationVacancies } from '@/api/organization'
 import { useI18n } from '@/i18n'
+import type { OrganizationResponse, VacancyResponse } from '@/types/api'
+import { employmentTypeLabel, vacancyLevelLabel, vacancyStatusLabel, workFormatLabel } from '@/utils/vacancy-labels'
 
 const { t } = useI18n()
-const vacancies = computed(() => getLocalizedVacancies())
+const organizations = ref<OrganizationResponse[]>([])
+const vacancies = ref<VacancyResponse[]>([])
+const isLoading = ref(true)
+const error = ref('')
+const organization = computed(() => organizations.value[0] ?? null)
+
+onMounted(async () => {
+  try {
+    organizations.value = await getMyOrganizations()
+    vacancies.value = organization.value ? await getOrganizationVacancies(organization.value.id) : []
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : t('businessWorkspace.loadFailed')
+  } finally {
+    isLoading.value = false
+  }
+})
 </script>

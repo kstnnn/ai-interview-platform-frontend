@@ -23,32 +23,38 @@
 
           <select v-model="levelFilter" class="h-11 rounded-full border border-border bg-input px-4 outline-none transition focus:border-primary">
             <option value="all">{{ t('publicVacancies.allLevels') }}</option>
-            <option value="Junior">Junior</option>
-            <option value="Mid">Mid</option>
-            <option value="Senior">Senior</option>
-            <option value="Lead">Lead</option>
+            <option value="JUNIOR">Junior</option>
+            <option value="MIDDLE">Middle</option>
+            <option value="SENIOR">Senior</option>
           </select>
         </div>
 
-        <div v-if="filteredVacancies.length" class="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+        <div v-if="isLoading" class="rounded-organic bg-muted/40 p-10 text-center text-muted-foreground">
+          {{ t('publicVacancies.loading') }}
+        </div>
+
+        <div v-else-if="error" class="rounded-organic bg-destructive/10 p-10 text-center text-destructive">
+          {{ error }}
+        </div>
+
+        <div v-else-if="filteredVacancies.length" class="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
           <BaseCard v-for="vacancy in filteredVacancies" :key="vacancy.id" class="flex flex-col p-6">
             <div class="flex items-start justify-between gap-4">
               <div>
                 <h3 class="text-lg font-bold text-foreground">{{ vacancy.title }}</h3>
-                <p class="mt-1 text-sm text-muted-foreground">{{ vacancy.organizationName }} · {{ vacancy.location }}</p>
+                <p class="mt-1 text-sm text-muted-foreground">{{ vacancy.organizationName }} · {{ vacancy.location || t('vacancies.noLocation') }}</p>
               </div>
               <span class="rounded-full bg-success/10 px-3 py-1 text-xs font-semibold text-success">{{ t('publicVacancies.active') }}</span>
             </div>
 
             <div class="mt-4 flex flex-wrap gap-2">
-              <span v-for="item in vacancy.stack" :key="item" class="rounded-full border border-border px-3 py-1 text-xs font-semibold">{{ item }}</span>
+              <span v-for="item in vacancy.technologyKeys" :key="item" class="rounded-full border border-border px-3 py-1 text-xs font-semibold">{{ item }}</span>
             </div>
 
             <div class="mt-4 flex items-center justify-between text-sm text-muted-foreground">
-              <p>{{ t('common.level') }}: {{ vacancy.level }}</p>
-              <p>{{ vacancy.interviewDurationMinutes }} {{ t('common.minutes') }} · {{ vacancy.candidateCount }} {{ t('common.candidates').toLowerCase() }}</p>
+              <p>{{ t('common.level') }}: {{ vacancyLevelLabel(vacancy.level, t) }}</p>
+              <p>{{ employmentTypeLabel(vacancy.employmentType, t) }} · {{ workFormatLabel(vacancy.workFormat, t) }}</p>
             </div>
-
             <div class="mt-5 flex gap-3">
               <RouterLink :to="`/vacancies/${vacancy.id}`" class="flex-1">
                 <BaseButton class="w-full" variant="outline">{{ t('common.open') }}</BaseButton>
@@ -61,7 +67,7 @@
         </div>
 
         <div v-else class="rounded-organic bg-muted/40 p-10 text-center text-muted-foreground">
-          {{ t('publicVacancies.noResults') }}
+          {{ vacancies.length === 0 ? t('publicVacancies.noPublished') : t('publicVacancies.noResults') }}
         </div>
       </div>
     </main>
@@ -71,31 +77,45 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { Search } from 'lucide-vue-next'
 import AppFooter from '@/components/AppFooter.vue'
 import AppHeader from '@/components/AppHeader.vue'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseCard from '@/components/BaseCard.vue'
-import { getPublicVacancies } from '@/data/mock-data'
+import { getPublicVacancies } from '@/api/organization'
 import { useI18n } from '@/i18n'
+import type { VacancyResponse } from '@/types/api'
+import { employmentTypeLabel, vacancyLevelLabel, workFormatLabel } from '@/utils/vacancy-labels'
 
 const search = ref('')
 const levelFilter = ref('all')
 const { t } = useI18n()
+const vacancies = ref<VacancyResponse[]>([])
+const isLoading = ref(true)
+const error = ref('')
 
-const vacancies = computed(() => getPublicVacancies())
+onMounted(async () => {
+  try {
+    vacancies.value = await getPublicVacancies()
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : t('publicVacancies.loadFailed')
+  } finally {
+    isLoading.value = false
+  }
+})
 
 const filteredVacancies = computed(() => {
   return vacancies.value.filter((vacancy) => {
     const term = search.value.trim().toLowerCase()
+    const requirements = vacancy.requirements?.toLowerCase() ?? ''
     const matchesSearch =
       term.length === 0 ||
       vacancy.title.toLowerCase().includes(term) ||
       vacancy.organizationName.toLowerCase().includes(term) ||
-      vacancy.stack.some((s) => s.toLowerCase().includes(term)) ||
-      vacancy.requiredSkills.some((s) => s.toLowerCase().includes(term))
+      vacancy.technologyKeys.some((s) => s.toLowerCase().includes(term)) ||
+      requirements.includes(term)
 
     const matchesLevel = levelFilter.value === 'all' || vacancy.level === levelFilter.value
 

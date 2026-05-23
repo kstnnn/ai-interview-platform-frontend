@@ -4,9 +4,7 @@
       <div class="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
         <div>
           <h1 class="font-serif text-lg font-bold text-foreground">{{ t('interview.title') }}</h1>
-          <p v-if="currentQuestion" class="text-sm text-muted-foreground">
-            {{ t('interview.questionOf').replace('{current}', String(currentQuestion.index ?? 0)).replace('{total}', String(currentQuestion.total ?? 0)) }}
-          </p>
+          <p v-if="currentQuestion" class="text-sm text-muted-foreground">{{ t('interview.inProgress') }}</p>
           <p v-else-if="status === 'connecting'" class="text-sm text-muted-foreground">{{ t('interview.connecting') }}
           </p>
           <p v-else-if="status === 'reconnecting'" class="text-sm text-warning">{{ t('interview.reconnecting') }}</p>
@@ -21,17 +19,6 @@
         </div>
       </div>
     </header>
-
-    <div v-if="currentQuestion" class="mx-auto max-w-5xl px-4 pt-4 sm:px-6 lg:px-8">
-      <div class="mb-2 flex items-center justify-between text-sm">
-        <span class="font-medium text-foreground">{{ t('interview.progress') }}</span>
-        <span class="text-muted-foreground">{{ progress }}% · {{ t('interview.remaining').replace('{count}', String(currentQuestion.remainingQuestions ?? 0)) }}</span>
-      </div>
-      <div class="h-2 overflow-hidden rounded-full bg-muted">
-        <div class="h-full rounded-full bg-primary transition-all duration-300" :style="{ width: `${progress}%` }">
-        </div>
-      </div>
-    </div>
 
     <main class="mx-auto flex max-w-5xl flex-col px-4 py-6 sm:px-6 lg:px-8">
       <BaseCard class="flex h-[calc(100vh-12rem)] min-h-[520px] flex-col overflow-hidden">
@@ -263,11 +250,6 @@ const canSubmitAnswer = computed(() => {
 const canSendReady = computed(() => hasReceivedGreeting.value && status.value === 'connected' && !currentQuestion.value)
 
 const showReconnectModal = computed(() => status.value === 'error' && reconnectAttempts.value >= 3)
-
-const progress = computed(() => {
-  if (!currentQuestion.value?.total) return 0
-  return Math.round(((currentQuestion.value.index ?? 0) / currentQuestion.value.total) * 100)
-})
 
 const retryCountdown = computed(() => {
   secondsElapsed.value

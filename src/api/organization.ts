@@ -4,6 +4,11 @@ import type {
   CreateVacancyRequest,
   OrganizationResponse,
   UpdateVacancyRequest,
+  VacancyApplicationRequest,
+  VacancyApplicationResponse,
+  VacancyApplicationSummary,
+  VacancyQuestionRequest,
+  VacancyQuestionResponse,
   VacancyResponse,
 } from '@/types/api'
 
@@ -69,4 +74,45 @@ export function draftVacancy(vacancyId: string) {
 
 export function closeVacancy(vacancyId: string) {
   return organizationRequest<VacancyResponse>(`/vacancies/${vacancyId}/close`, { method: 'POST' })
+}
+
+export function getVacancyQuestions(vacancyId: string) {
+  return organizationRequest<VacancyQuestionResponse[]>(`/vacancies/${vacancyId}/questions`)
+}
+
+export function createVacancyQuestion(vacancyId: string, data: VacancyQuestionRequest) {
+  return organizationRequest<VacancyQuestionResponse>(`/vacancies/${vacancyId}/questions`, {
+    method: 'POST',
+    body: data,
+  })
+}
+
+export function updateVacancyQuestion(vacancyId: string, questionId: string, data: Partial<VacancyQuestionRequest>) {
+  return organizationRequest<VacancyQuestionResponse>(`/vacancies/${vacancyId}/questions/${questionId}`, {
+    method: 'PATCH',
+    body: data,
+  })
+}
+
+export function deleteVacancyQuestion(vacancyId: string, questionId: string) {
+  return organizationRequest<void>(`/vacancies/${vacancyId}/questions/${questionId}`, { method: 'DELETE' })
+}
+
+export function applyToVacancy(vacancyId: string, data: VacancyApplicationRequest) {
+  return organizationRequest<VacancyApplicationResponse>(`/vacancies/public/${vacancyId}/applications`, {
+    method: 'POST',
+    body: data,
+  })
+}
+
+export function getMyApplications() {
+  return organizationRequest<VacancyApplicationSummary[]>('/applications/my')
+}
+
+export function getApplication(applicationId: string) {
+  return organizationRequest<VacancyApplicationResponse>(`/applications/${applicationId}`)
+}
+
+export function getVacancyApplications(vacancyId: string) {
+  return organizationRequest<VacancyApplicationSummary[]>(`/vacancies/${vacancyId}/applications`)
 }

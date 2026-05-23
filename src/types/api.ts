@@ -90,6 +90,7 @@ export type InterviewQuestionReport = {
   totalScore: number | null
   feedback: string | null
   knowledgeGaps: string[]
+  sourceType?: 'QUESTION_BANK' | 'VACANCY_CUSTOM' | 'AI_FOLLOW_UP'
 }
 
 export type InterviewResult = {
@@ -160,3 +161,45 @@ export type CreateVacancyRequest = {
 }
 
 export type UpdateVacancyRequest = Partial<CreateVacancyRequest>
+
+export type VacancyQuestionRequest = {
+  questionText: string
+  expectedAnswer?: string | null
+  evaluationRubric?: string | null
+  topic?: string | null
+  required: boolean
+  displayOrder: number
+}
+
+export type VacancyQuestionResponse = {
+  id: string
+  vacancyId: string
+  questionText: string
+  expectedAnswer: string | null
+  evaluationRubric: string | null
+  topic: string | null
+  required: boolean
+  displayOrder: number
+  active: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export type VacancyApplicationRequest = {
+  coverLetter?: string | null
+}
+
+export type ApplicationStatus = 'INTERVIEW_CREATED' | 'INTERVIEW_IN_PROGRESS' | 'INTERVIEW_COMPLETED' | 'REJECTED' | 'WITHDRAWN'
+
+export type VacancyApplicationResponse = {
+  applicationId: string
+  vacancyId: string
+  candidateUserId: string
+  status: ApplicationStatus
+  interviewSessionId: string
+  coverLetter: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export type VacancyApplicationSummary = VacancyApplicationResponse

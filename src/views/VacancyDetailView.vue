@@ -49,8 +49,85 @@
               <p class="mt-4 whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{{ vacancy.requirements || t('vacancyDetailVacancy.noRequirements') }}</p>
             </BaseCard>
             <BaseCard class="p-8">
+              <div class="flex items-center justify-between gap-4">
+                <h2 class="text-xl font-bold text-foreground">{{ t('vacancyQuestions.title') }}</h2>
+                <BaseButton size="sm" variant="outline" @click="resetQuestionForm">{{ t('vacancyQuestions.new') }}</BaseButton>
+              </div>
+
+              <form class="mt-5 space-y-4 rounded-[1.5rem] border border-border/60 p-5" @submit.prevent="submitQuestion">
+                <label class="block space-y-2">
+                  <span class="text-sm font-semibold text-foreground">{{ t('vacancyQuestions.questionText') }}</span>
+                  <textarea v-model="questionForm.questionText" required rows="3" class="w-full rounded-[1.25rem] border border-border bg-input px-4 py-3 text-sm outline-none focus:border-primary"></textarea>
+                </label>
+                <label class="block space-y-2">
+                  <span class="text-sm font-semibold text-foreground">{{ t('vacancyQuestions.expectedAnswer') }}</span>
+                  <textarea v-model="questionForm.expectedAnswer" rows="2" class="w-full rounded-[1.25rem] border border-border bg-input px-4 py-3 text-sm outline-none focus:border-primary"></textarea>
+                </label>
+                <label class="block space-y-2">
+                  <span class="text-sm font-semibold text-foreground">{{ t('vacancyQuestions.evaluationRubric') }}</span>
+                  <textarea v-model="questionForm.evaluationRubric" rows="2" class="w-full rounded-[1.25rem] border border-border bg-input px-4 py-3 text-sm outline-none focus:border-primary"></textarea>
+                </label>
+                <div class="grid gap-4 sm:grid-cols-[1fr_0.6fr]">
+                  <label class="block space-y-2">
+                    <span class="text-sm font-semibold text-foreground">{{ t('vacancyQuestions.topic') }}</span>
+                    <input v-model="questionForm.topic" class="h-11 w-full rounded-full border border-border bg-input px-4 text-sm outline-none focus:border-primary" placeholder="spring" />
+                  </label>
+                  <label class="block space-y-2">
+                    <span class="text-sm font-semibold text-foreground">{{ t('vacancyQuestions.displayOrder') }}</span>
+                    <input v-model.number="questionForm.displayOrder" min="1" type="number" class="h-11 w-full rounded-full border border-border bg-input px-4 text-sm outline-none focus:border-primary" />
+                  </label>
+                </div>
+                <label class="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <input v-model="questionForm.required" type="checkbox" class="h-4 w-4 rounded border-border" />
+                  {{ t('vacancyQuestions.required') }}
+                </label>
+                <p v-if="questionError" class="text-sm text-destructive">{{ questionError }}</p>
+                <div class="flex flex-wrap gap-3">
+                  <BaseButton tag="button" size="sm" :disabled="isSavingQuestion">{{ editingQuestionId ? t('vacancyQuestions.save') : t('vacancyQuestions.add') }}</BaseButton>
+                  <BaseButton v-if="editingQuestionId" tag="button" type="button" size="sm" variant="outline" @click="resetQuestionForm">{{ t('vacancyQuestions.cancel') }}</BaseButton>
+                </div>
+              </form>
+
+              <div v-if="isLoadingQuestions" class="mt-5 rounded-[1.5rem] bg-muted/50 p-5 text-sm text-muted-foreground">{{ t('vacancyQuestions.loading') }}</div>
+              <div v-else-if="questions.length === 0" class="mt-5 rounded-[1.5rem] bg-muted/50 p-5 text-sm text-muted-foreground">{{ t('vacancyQuestions.empty') }}</div>
+              <div v-else class="mt-5 space-y-4">
+                <div v-for="question in questions" :key="question.id" class="rounded-[1.5rem] border border-border/60 p-5">
+                  <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <div class="flex flex-wrap gap-2 text-xs font-semibold text-muted-foreground">
+                        <span class="rounded-full bg-muted px-3 py-1">#{{ question.displayOrder }}</span>
+                        <span v-if="question.topic" class="rounded-full bg-muted px-3 py-1">{{ question.topic }}</span>
+                        <span v-if="question.required" class="rounded-full bg-primary/10 px-3 py-1 text-primary">{{ t('vacancyQuestions.required') }}</span>
+                      </div>
+                      <p class="mt-3 font-semibold text-foreground">{{ question.questionText }}</p>
+                      <p v-if="question.expectedAnswer" class="mt-2 text-sm text-muted-foreground">{{ question.expectedAnswer }}</p>
+                    </div>
+                    <div class="flex gap-2">
+                      <BaseButton size="sm" variant="ghost" @click="editQuestion(question)">{{ t('vacancyQuestions.edit') }}</BaseButton>
+                      <BaseButton size="sm" variant="ghost" @click="removeQuestion(question.id)">{{ t('vacancyQuestions.delete') }}</BaseButton>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </BaseCard>
+            <BaseCard class="p-8">
               <h2 class="text-xl font-bold text-foreground">{{ t('vacancyDetailVacancy.applications') }}</h2>
-              <p class="mt-4 rounded-[1.5rem] bg-muted/50 p-5 text-sm text-muted-foreground">{{ t('businessWorkspace.pipelinePlaceholder') }}</p>
+              <div v-if="isLoadingApplications" class="mt-4 rounded-[1.5rem] bg-muted/50 p-5 text-sm text-muted-foreground">{{ t('applications.loading') }}</div>
+              <div v-else-if="applications.length === 0" class="mt-4 rounded-[1.5rem] bg-muted/50 p-5 text-sm text-muted-foreground">{{ t('applications.empty') }}</div>
+              <div v-else class="mt-4 space-y-4">
+                <div v-for="application in applications" :key="application.applicationId" class="rounded-[1.5rem] border border-border/60 p-5">
+                  <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p class="font-semibold text-foreground">{{ t('applications.candidate') }}: {{ application.candidateUserId }}</p>
+                      <p class="mt-1 text-sm text-muted-foreground">{{ applicationStatusLabel(application.status) }} · {{ formatDate(application.createdAt) }}</p>
+                      <p v-if="application.coverLetter" class="mt-3 whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{{ application.coverLetter }}</p>
+                    </div>
+                    <RouterLink :to="`/candidate/interview/${application.interviewSessionId}`">
+                      <BaseButton size="sm" variant="outline">{{ t('applications.openInterview') }}</BaseButton>
+                    </RouterLink>
+                  </div>
+                </div>
+              </div>
             </BaseCard>
           </div>
         </div>
@@ -71,30 +148,59 @@
 </template>
 
 <script setup lang="ts">
-import { defineComponent, h, onMounted, ref } from 'vue'
+import { defineComponent, h, onMounted, reactive, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { ArrowLeft } from 'lucide-vue-next'
 import AppFooter from '@/components/AppFooter.vue'
 import AppHeader from '@/components/AppHeader.vue'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseCard from '@/components/BaseCard.vue'
-import { closeVacancy, draftVacancy, getVacancy, publishVacancy } from '@/api/organization'
+import { closeVacancy, createVacancyQuestion, deleteVacancyQuestion, draftVacancy, getVacancy, getVacancyApplications, getVacancyQuestions, publishVacancy, updateVacancyQuestion } from '@/api/organization'
 import { useI18n } from '@/i18n'
-import type { VacancyResponse } from '@/types/api'
+import type { VacancyApplicationSummary, VacancyQuestionResponse, VacancyResponse } from '@/types/api'
 import { employmentTypeLabel, vacancyLevelLabel, vacancyStatusLabel, workFormatLabel } from '@/utils/vacancy-labels'
 
 const route = useRoute()
 const { t } = useI18n()
 const vacancy = ref<VacancyResponse | null>(null)
+const questions = ref<VacancyQuestionResponse[]>([])
+const applications = ref<VacancyApplicationSummary[]>([])
 const isLoading = ref(true)
 const isUpdating = ref(false)
+const isLoadingQuestions = ref(false)
+const isLoadingApplications = ref(false)
+const isSavingQuestion = ref(false)
+const questionError = ref('')
+const editingQuestionId = ref('')
+const questionForm = reactive({ questionText: '', expectedAnswer: '', evaluationRubric: '', topic: '', required: true, displayOrder: 1 })
 
 async function loadVacancy() {
   isLoading.value = true
   try {
     vacancy.value = await getVacancy(String(route.params.vacancyId ?? ''))
+    await Promise.all([loadQuestions(), loadApplications()])
   } finally {
     isLoading.value = false
+  }
+}
+
+async function loadQuestions() {
+  if (!route.params.vacancyId) return
+  isLoadingQuestions.value = true
+  try {
+    questions.value = await getVacancyQuestions(String(route.params.vacancyId))
+  } finally {
+    isLoadingQuestions.value = false
+  }
+}
+
+async function loadApplications() {
+  if (!route.params.vacancyId) return
+  isLoadingApplications.value = true
+  try {
+    applications.value = await getVacancyApplications(String(route.params.vacancyId))
+  } finally {
+    isLoadingApplications.value = false
   }
 }
 
@@ -112,6 +218,69 @@ async function changeStatus(action: 'draft' | 'publish' | 'close') {
   } finally {
     isUpdating.value = false
   }
+}
+
+function resetQuestionForm() {
+  editingQuestionId.value = ''
+  questionError.value = ''
+  questionForm.questionText = ''
+  questionForm.expectedAnswer = ''
+  questionForm.evaluationRubric = ''
+  questionForm.topic = ''
+  questionForm.required = true
+  questionForm.displayOrder = questions.value.length + 1
+}
+
+function editQuestion(question: VacancyQuestionResponse) {
+  editingQuestionId.value = question.id
+  questionForm.questionText = question.questionText
+  questionForm.expectedAnswer = question.expectedAnswer ?? ''
+  questionForm.evaluationRubric = question.evaluationRubric ?? ''
+  questionForm.topic = question.topic ?? ''
+  questionForm.required = question.required
+  questionForm.displayOrder = question.displayOrder
+}
+
+async function submitQuestion() {
+  if (!vacancy.value || !questionForm.questionText.trim()) return
+  isSavingQuestion.value = true
+  questionError.value = ''
+  const payload = {
+    questionText: questionForm.questionText.trim(),
+    expectedAnswer: questionForm.expectedAnswer.trim() || null,
+    evaluationRubric: questionForm.evaluationRubric.trim() || null,
+    topic: questionForm.topic.trim() || null,
+    required: questionForm.required,
+    displayOrder: Number(questionForm.displayOrder) || 1,
+  }
+  try {
+    if (editingQuestionId.value) {
+      await updateVacancyQuestion(vacancy.value.id, editingQuestionId.value, payload)
+    } else {
+      await createVacancyQuestion(vacancy.value.id, payload)
+    }
+    await loadQuestions()
+    resetQuestionForm()
+  } catch (err) {
+    questionError.value = err instanceof Error ? err.message : t('vacancyQuestions.saveFailed')
+  } finally {
+    isSavingQuestion.value = false
+  }
+}
+
+async function removeQuestion(questionId: string) {
+  if (!vacancy.value) return
+  await deleteVacancyQuestion(vacancy.value.id, questionId)
+  await loadQuestions()
+  if (editingQuestionId.value === questionId) resetQuestionForm()
+}
+
+function applicationStatusLabel(status: string) {
+  return t(`applications.status.${status}` as any)
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 }
 
 const InfoItem = defineComponent({

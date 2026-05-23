@@ -21,30 +21,16 @@
           <BaseCard class="p-8">
             <h1 class="font-serif text-4xl font-bold text-foreground">{{ t('vacancyApply.title') }}</h1>
             <p class="mt-3 text-muted-foreground">{{ t('vacancyApply.subtitle') }}</p>
-            <div class="mt-6 rounded-[1.5rem] border border-warning/30 bg-warning/10 p-4 text-sm leading-relaxed text-foreground">
-              {{ t('vacancyApply.unavailable') }}
-            </div>
+            <div v-if="submitError" class="mt-6 rounded-[1.5rem] border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">{{ submitError }}</div>
 
             <form class="mt-8 space-y-6" @submit.prevent="submitApplication">
               <label class="space-y-2 block">
-                <span class="block text-sm font-semibold text-foreground">{{ t('vacancyApply.name') }}</span>
-                <input v-model="form.name" class="h-12 w-full rounded-full border border-border bg-input px-4 outline-none focus:border-primary" placeholder="Jane Doe" />
-              </label>
-              <label class="space-y-2 block">
-                <span class="block text-sm font-semibold text-foreground">{{ t('vacancyApply.email') }}</span>
-                <input v-model="form.email" type="email" class="h-12 w-full rounded-full border border-border bg-input px-4 outline-none focus:border-primary" placeholder="jane@example.com" />
-              </label>
-              <label class="space-y-2 block">
-                <span class="block text-sm font-semibold text-foreground">{{ t('vacancyApply.profile') }}</span>
-                <input v-model="form.profile" class="h-12 w-full rounded-full border border-border bg-input px-4 outline-none focus:border-primary" placeholder="https://linkedin.com/in/..." />
-              </label>
-              <label class="space-y-2 block">
-                <span class="block text-sm font-semibold text-foreground">{{ t('vacancyApply.note') }}</span>
-                <textarea v-model="form.note" rows="4" class="w-full rounded-[1.5rem] border border-border bg-input px-4 py-3 outline-none focus:border-primary"></textarea>
+                <span class="block text-sm font-semibold text-foreground">{{ t('vacancyApply.coverLetter') }}</span>
+                <textarea v-model="coverLetter" rows="6" class="w-full rounded-[1.5rem] border border-border bg-input px-4 py-3 outline-none focus:border-primary" :placeholder="t('vacancyApply.coverLetterPlaceholder')"></textarea>
               </label>
 
-              <BaseButton size="lg" tag="button" disabled>
-                {{ t('vacancyApply.submit') }}
+              <BaseButton size="lg" tag="button" :disabled="isSubmitting">
+                {{ isSubmitting ? t('vacancyApply.submitting') : t('vacancyApply.submit') }}
                 <ArrowRight class="h-4 w-4" />
               </BaseButton>
             </form>
@@ -61,7 +47,7 @@
             <BaseCard class="p-6">
               <h2 class="text-lg font-bold text-foreground">{{ t('vacancyApply.afterSubmit') }}</h2>
               <p class="mt-3 text-sm leading-relaxed text-muted-foreground">
-                {{ t('vacancyApply.afterSubmitUnavailable') }}
+                {{ t('vacancyApply.afterSubmitReady') }}
               </p>
             </BaseCard>
           </div>
@@ -81,28 +67,26 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { onMounted, ref } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, ArrowRight } from 'lucide-vue-next'
 import AppFooter from '@/components/AppFooter.vue'
 import AppHeader from '@/components/AppHeader.vue'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseCard from '@/components/BaseCard.vue'
-import { getPublicVacancy } from '@/api/organization'
+import { applyToVacancy, getPublicVacancy } from '@/api/organization'
 import { useI18n } from '@/i18n'
 import type { VacancyResponse } from '@/types/api'
 
 const route = useRoute()
+const router = useRouter()
 const { t } = useI18n()
 const vacancy = ref<VacancyResponse | null>(null)
 const isLoading = ref(true)
+const isSubmitting = ref(false)
 const error = ref('')
-const form = reactive({
-  name: '',
-  email: '',
-  profile: '',
-  note: '',
-})
+const submitError = ref('')
+const coverLetter = ref('')
 
 onMounted(async () => {
   try {
@@ -119,7 +103,21 @@ onMounted(async () => {
   }
 })
 
-function submitApplication() {
-  return
+async function submitApplication() {
+  if (!vacancy.value) return
+  isSubmitting.value = true
+  submitError.value = ''
+  try {
+    const application = await applyToVacancy(vacancy.value.id, { coverLetter: coverLetter.value.trim() || null })
+    await router.push(`/candidate/interview/${application.interviewSessionId}`)
+  } catch (err: any) {
+    submitError.value = err?.status === 409
+      ? t('vacancyApply.duplicate')
+      : err instanceof Error
+        ? err.message
+        : t('vacancyApply.submitFailed')
+  } finally {
+    isSubmitting.value = false
+  }
 }
 </script>

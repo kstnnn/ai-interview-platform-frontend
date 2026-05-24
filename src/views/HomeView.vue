@@ -51,7 +51,7 @@
           <div class="mb-16 text-center">
             <h2 class="font-serif text-4xl font-bold text-foreground sm:text-5xl">Product areas now represented</h2>
             <p class="mx-auto mt-4 max-w-2xl text-lg text-muted-foreground">
-              The frontend remains mock-only, but the screens now match the real product structure you described.
+              The platform now connects live auth, public vacancies, applications, AI interviews, reports, and learning roadmaps.
             </p>
           </div>
 
@@ -59,7 +59,7 @@
             <BaseCard class="p-8">
               <Mic class="h-6 w-6 text-primary" />
               <h3 class="mt-4 font-serif text-lg font-bold">Mock interviews</h3>
-              <p class="mt-2 text-sm leading-relaxed text-muted-foreground">Personal practice interviews can lead into the existing voice interview screen.</p>
+              <p class="mt-2 text-sm leading-relaxed text-muted-foreground">Personal practice interviews run through the live AI interview flow and produce reports.</p>
             </BaseCard>
             <BaseCard class="p-8">
               <LayoutDashboard class="h-6 w-6 text-secondary" />
@@ -69,7 +69,7 @@
             <BaseCard class="p-8">
               <FileBarChart class="h-6 w-6 text-primary" />
               <h3 class="mt-4 font-serif text-lg font-bold">AI feedback</h3>
-              <p class="mt-2 text-sm leading-relaxed text-muted-foreground">Results, reports, recommendations, and roadmaps are visible as separate frontend surfaces.</p>
+              <p class="mt-2 text-sm leading-relaxed text-muted-foreground">Completed mock interviews feed detailed reports and a dynamic learning roadmap.</p>
             </BaseCard>
           </div>
         </div>

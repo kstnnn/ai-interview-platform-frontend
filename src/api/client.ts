@@ -16,15 +16,15 @@ function createApiClient(baseURL: string, requireAuth: boolean) {
   return ofetch.create({
     baseURL,
     async onRequest({ options }) {
+      if (!requireAuth) {
+        return
+      }
+
       const token = await getAccessToken()
       const accessToken = typeof token === 'string' ? token.trim() : ''
 
       if (!accessToken) {
-        if (requireAuth) {
-          throw new ApiError('Missing authentication token.', 401)
-        }
-
-        return
+        throw new ApiError('Missing authentication token.', 401)
       }
 
       const existingHeaders = options.headers as any

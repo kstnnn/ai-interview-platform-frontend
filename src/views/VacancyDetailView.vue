@@ -135,21 +135,33 @@
               </div>
             </BaseCard>
             <BaseCard class="p-8">
-              <h2 class="text-xl font-bold text-foreground">{{ t('vacancyDetailVacancy.applications') }}</h2>
+              <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h2 class="text-xl font-bold text-foreground">{{ t('vacancyDetailVacancy.applications') }}</h2>
+                  <p class="mt-2 text-sm text-muted-foreground">{{ t('applications.summaryDesc') }}</p>
+                </div>
+                <RouterLink :to="`/business/vacancies/${vacancy.id}/applications`">
+                  <BaseButton size="sm" variant="outline">{{ t('applications.viewAll') }}</BaseButton>
+                </RouterLink>
+              </div>
               <div v-if="isLoadingApplications" class="mt-4 rounded-[1.5rem] bg-muted/50 p-5 text-sm text-muted-foreground">{{ t('applications.loading') }}</div>
               <div v-else-if="applications.length === 0" class="mt-4 rounded-[1.5rem] bg-muted/50 p-5 text-sm text-muted-foreground">{{ t('applications.empty') }}</div>
-              <div v-else class="mt-4 space-y-4">
-                <div v-for="application in applications" :key="application.applicationId" class="rounded-[1.5rem] border border-border/60 p-5">
-                  <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <p class="font-semibold text-foreground">{{ t('applications.candidate') }}: {{ application.candidateUserId }}</p>
-                      <p class="mt-1 text-sm text-muted-foreground">{{ applicationStatusLabel(application.status) }} · {{ formatDate(application.createdAt) }}</p>
-                      <p v-if="application.coverLetter" class="mt-3 whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{{ application.coverLetter }}</p>
-                    </div>
-                    <RouterLink :to="`/results/${application.interviewSessionId}`">
-                      <BaseButton size="sm" variant="outline">{{ t('applications.openStatus') }}</BaseButton>
-                    </RouterLink>
-                  </div>
+              <div v-else class="mt-5 grid gap-3 sm:grid-cols-4">
+                <div class="rounded-[1.5rem] bg-muted/40 p-4 text-center">
+                  <p class="text-2xl font-bold text-foreground">{{ applications.length }}</p>
+                  <p class="mt-1 text-xs text-muted-foreground">{{ t('applications.total') }}</p>
+                </div>
+                <div class="rounded-[1.5rem] bg-muted/40 p-4 text-center">
+                  <p class="text-2xl font-bold text-success">{{ completedApplicationsCount }}</p>
+                  <p class="mt-1 text-xs text-muted-foreground">{{ t('applications.completed') }}</p>
+                </div>
+                <div class="rounded-[1.5rem] bg-muted/40 p-4 text-center">
+                  <p class="text-2xl font-bold text-primary">{{ inProgressApplicationsCount }}</p>
+                  <p class="mt-1 text-xs text-muted-foreground">{{ t('applications.inProgress') }}</p>
+                </div>
+                <div class="rounded-[1.5rem] bg-muted/40 p-4 text-center">
+                  <p class="text-2xl font-bold text-primary">{{ applicationsAverageScore }}</p>
+                  <p class="mt-1 text-xs text-muted-foreground">{{ t('applications.avgScore') }}</p>
                 </div>
               </div>
             </BaseCard>
@@ -172,7 +184,7 @@
 </template>
 
 <script setup lang="ts">
-import { defineComponent, h, onMounted, reactive, ref } from 'vue'
+import { computed, defineComponent, h, onMounted, reactive, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { ArrowLeft } from 'lucide-vue-next'
 import AppFooter from '@/components/AppFooter.vue'
@@ -201,6 +213,13 @@ const settingsMessage = ref('')
 const editingQuestionId = ref('')
 const questionForm = reactive({ questionText: '', expectedAnswer: '', evaluationRubric: '', topic: '', required: true, displayOrder: 1 })
 const settingsForm = reactive({ minPrimaryQuestions: 5, maxPrimaryQuestions: 8, maxFollowUpsPerPrimary: 1 })
+const completedApplicationsCount = computed(() => applications.value.filter((application) => application.status === 'INTERVIEW_COMPLETED').length)
+const inProgressApplicationsCount = computed(() => applications.value.filter((application) => application.status === 'INTERVIEW_CREATED' || application.status === 'INTERVIEW_IN_PROGRESS').length)
+const applicationsAverageScore = computed(() => {
+  const scores = applications.value.map((application) => application.sessionConfidence).filter((score): score is number => typeof score === 'number')
+  if (!scores.length) return '—'
+  return `${Math.round((scores.reduce((sum, score) => sum + score, 0) / scores.length) * 100)}%`
+})
 
 async function loadVacancy() {
   isLoading.value = true
@@ -329,14 +348,6 @@ async function removeQuestion(questionId: string) {
   await deleteVacancyQuestion(vacancy.value.id, questionId)
   await loadQuestions()
   if (editingQuestionId.value === questionId) resetQuestionForm()
-}
-
-function applicationStatusLabel(status: string) {
-  return t(`applications.status.${status}` as any)
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 }
 
 const InfoItem = defineComponent({

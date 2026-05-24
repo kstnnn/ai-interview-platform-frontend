@@ -124,7 +124,7 @@
             <div v-else-if="roadmapError" class="mt-5 rounded-[1.5rem] bg-destructive/10 p-5 text-sm text-destructive">{{ roadmapError }}</div>
             <div v-else-if="roadmapPreview.length" class="mt-5 grid gap-4 sm:grid-cols-2">
               <div v-for="topic in roadmapPreview" :key="topic.topic" class="rounded-[1.5rem] bg-muted/50 p-5">
-                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{{ topic.topic }}</p>
+                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{{ formatTopic(topic.topic) }}</p>
                 <h3 class="mt-2 font-bold text-foreground">{{ scoreLabel(topic.currentScore ?? topic.score) }}</h3>
                 <p class="mt-2 text-sm leading-relaxed text-muted-foreground">{{ topic.reason }}</p>
               </div>
@@ -253,5 +253,13 @@ function applicationStatusLabel(status: string) {
 
 function scoreLabel(score: number | null | undefined) {
   return typeof score === 'number' ? `${Math.round(score * 100)}%` : '—'
+}
+
+function formatTopic(topic: string) {
+  return topic
+    .split('_')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
 }
 </script>

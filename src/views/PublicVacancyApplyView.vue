@@ -24,6 +24,34 @@
             <div v-if="submitError" class="mt-6 rounded-[1.5rem] border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">{{ submitError }}</div>
 
             <form class="mt-8 space-y-6" @submit.prevent="submitApplication">
+              <div class="grid gap-4 sm:grid-cols-2">
+                <label class="block space-y-2">
+                  <span class="block text-sm font-semibold text-foreground">{{ t('vacancyApply.contactEmail') }}</span>
+                  <input v-model="contacts.email" type="email" class="h-11 w-full rounded-full border border-border bg-input px-4 text-sm outline-none focus:border-primary" placeholder="name@example.com" />
+                </label>
+                <label class="block space-y-2">
+                  <span class="block text-sm font-semibold text-foreground">{{ t('vacancyApply.phone') }}</span>
+                  <input v-model="contacts.phone" type="tel" class="h-11 w-full rounded-full border border-border bg-input px-4 text-sm outline-none focus:border-primary" placeholder="+7 999 123-45-67" />
+                </label>
+                <label class="block space-y-2">
+                  <span class="block text-sm font-semibold text-foreground">{{ t('vacancyApply.telegram') }}</span>
+                  <input v-model="contacts.telegram" class="h-11 w-full rounded-full border border-border bg-input px-4 text-sm outline-none focus:border-primary" placeholder="@username" />
+                </label>
+                <label class="block space-y-2">
+                  <span class="block text-sm font-semibold text-foreground">{{ t('vacancyApply.linkedIn') }}</span>
+                  <input v-model="contacts.linkedIn" type="url" class="h-11 w-full rounded-full border border-border bg-input px-4 text-sm outline-none focus:border-primary" placeholder="https://linkedin.com/in/..." />
+                </label>
+                <label class="block space-y-2">
+                  <span class="block text-sm font-semibold text-foreground">{{ t('vacancyApply.portfolioUrl') }}</span>
+                  <input v-model="contacts.portfolioUrl" type="url" class="h-11 w-full rounded-full border border-border bg-input px-4 text-sm outline-none focus:border-primary" placeholder="https://github.com/..." />
+                </label>
+                <label class="block space-y-2">
+                  <span class="block text-sm font-semibold text-foreground">{{ t('vacancyApply.hhResumeUrl') }}</span>
+                  <input v-model="contacts.hhResumeUrl" type="url" class="h-11 w-full rounded-full border border-border bg-input px-4 text-sm outline-none focus:border-primary" placeholder="https://hh.ru/resume/..." />
+                </label>
+              </div>
+              <p class="text-sm text-muted-foreground">{{ t('vacancyApply.contactsHint') }}</p>
+
               <label class="space-y-2 block">
                 <span class="block text-sm font-semibold text-foreground">{{ t('vacancyApply.coverLetter') }}</span>
                 <textarea v-model="coverLetter" rows="6" class="w-full rounded-[1.5rem] border border-border bg-input px-4 py-3 outline-none focus:border-primary" :placeholder="t('vacancyApply.coverLetterPlaceholder')"></textarea>
@@ -67,7 +95,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, ArrowRight } from 'lucide-vue-next'
 import AppFooter from '@/components/AppFooter.vue'
@@ -87,6 +115,14 @@ const isSubmitting = ref(false)
 const error = ref('')
 const submitError = ref('')
 const coverLetter = ref('')
+const contacts = reactive({
+  email: '',
+  phone: '',
+  telegram: '',
+  linkedIn: '',
+  portfolioUrl: '',
+  hhResumeUrl: '',
+})
 
 onMounted(async () => {
   try {
@@ -105,10 +141,23 @@ onMounted(async () => {
 
 async function submitApplication() {
   if (!vacancy.value) return
+  const candidateContacts = normalizeContacts()
+  if (!hasContact(candidateContacts)) {
+    submitError.value = t('vacancyApply.contactsRequired')
+    return
+  }
+  if (candidateContacts.email && !isValidEmail(candidateContacts.email)) {
+    submitError.value = t('vacancyApply.invalidEmail')
+    return
+  }
+
   isSubmitting.value = true
   submitError.value = ''
   try {
-    const application = await applyToVacancy(vacancy.value.id, { coverLetter: coverLetter.value.trim() || null })
+    const application = await applyToVacancy(vacancy.value.id, {
+      coverLetter: coverLetter.value.trim() || null,
+      candidateContacts,
+    })
     await router.push(`/candidate/interview/${application.interviewSessionId}`)
   } catch (err: any) {
     submitError.value = err?.status === 409
@@ -119,5 +168,24 @@ async function submitApplication() {
   } finally {
     isSubmitting.value = false
   }
+}
+
+function normalizeContacts() {
+  return {
+    email: contacts.email.trim() || null,
+    phone: contacts.phone.trim() || null,
+    telegram: contacts.telegram.trim() || null,
+    linkedIn: contacts.linkedIn.trim() || null,
+    portfolioUrl: contacts.portfolioUrl.trim() || null,
+    hhResumeUrl: contacts.hhResumeUrl.trim() || null,
+  }
+}
+
+function hasContact(candidateContacts: ReturnType<typeof normalizeContacts>) {
+  return Object.values(candidateContacts).some(Boolean)
+}
+
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 }
 </script>

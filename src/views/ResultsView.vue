@@ -70,10 +70,10 @@
             <div v-for="topic in result.topics" :key="topic.topic" class="rounded-[1.5rem] bg-muted/40 p-4">
               <div class="flex items-center justify-between">
                 <h3 class="font-semibold text-foreground">{{ topicLabel(topic.topic) }}</h3>
-                <span class="text-sm font-bold text-primary">{{ Math.round(topic.masteryScore * 100) }}%</span>
+                <span class="text-sm font-bold text-primary">{{ scoreLabel(topic.masteryScore) }}</span>
               </div>
               <div class="mt-2 h-2 overflow-hidden rounded-full bg-background/50">
-                <div class="h-full rounded-full bg-primary" :style="{ width: `${Math.round(topic.masteryScore * 100)}%` }"></div>
+                <div class="h-full rounded-full bg-primary" :style="{ width: scoreWidth(topic.masteryScore) }"></div>
               </div>
               <div class="mt-3 grid grid-cols-3 gap-4 text-center text-xs text-muted-foreground">
                 <div>
@@ -85,7 +85,7 @@
                   <p>{{ t('results.avgScore') }}</p>
                 </div>
                 <div>
-                  <p class="font-semibold text-foreground">{{ Math.round(topic.confidenceScore * 100) }}%</p>
+                  <p class="font-semibold text-foreground">{{ scoreLabel(topic.confidenceScore) }}</p>
                   <p>{{ t('results.confidence') }}</p>
                 </div>
               </div>
@@ -156,43 +156,6 @@
           </div>
         </BaseCard>
 
-        <BaseCard class="mb-8 p-8">
-          <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 class="text-xl font-bold text-foreground">{{ t('results.sessionRoadmapTitle') }}</h2>
-              <p class="mt-1 text-sm text-muted-foreground">{{ roadmap?.summary || t('results.sessionRoadmapSubtitle') }}</p>
-            </div>
-            <BaseButton v-if="roadmapError" variant="outline" :disabled="isLoadingRoadmap" @click="loadRoadmap">
-              {{ isLoadingRoadmap ? t('results.loadingRoadmap') : t('results.retryRoadmap') }}
-            </BaseButton>
-          </div>
-          <div v-if="isLoadingRoadmap" class="mt-6 rounded-[1.5rem] bg-muted/40 p-6 text-sm text-muted-foreground">{{ t('results.loadingRoadmap') }}</div>
-          <div v-else-if="roadmapError" class="mt-6 rounded-[1.5rem] bg-warning/10 p-6 text-sm text-foreground">{{ roadmapError }}</div>
-          <div v-else-if="roadmap?.priorityTopics.length" class="mt-6 space-y-4">
-            <div v-for="topic in roadmap.priorityTopics" :key="topic.topic" class="rounded-[1.5rem] border border-border/60 p-5">
-              <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <h3 class="font-semibold text-foreground">{{ topicLabel(topic.topic) }}</h3>
-                  <p class="mt-2 text-sm leading-relaxed text-muted-foreground">{{ topic.reason }}</p>
-                </div>
-                <span class="text-sm font-bold text-primary">{{ roadmapScoreLabel(topic.score ?? topic.currentScore) }}</span>
-              </div>
-              <div v-if="topic.recommendedActions.length" class="mt-4">
-                <h4 class="text-sm font-semibold text-foreground">{{ t('results.recommendedActions') }}</h4>
-                <ul class="mt-2 space-y-2 text-sm text-muted-foreground">
-                  <li v-for="action in topic.recommendedActions" :key="action">{{ action }}</li>
-                </ul>
-              </div>
-              <div v-if="topic.resources.length" class="mt-4 flex flex-wrap gap-2">
-                <a v-for="resource in topic.resources" :key="resource.url" :href="resource.url" target="_blank" rel="noreferrer" class="rounded-full border border-border px-3 py-1 text-xs font-semibold text-primary hover:bg-primary/5">
-                  {{ resource.title }} · {{ resource.type }}
-                </a>
-              </div>
-            </div>
-          </div>
-          <div v-else class="mt-6 rounded-[1.5rem] bg-muted/40 p-6 text-sm text-muted-foreground">{{ t('results.noRoadmap') }}</div>
-        </BaseCard>
-
         <div class="flex flex-col gap-3 sm:flex-row sm:justify-between">
           <RouterLink to="/user">
             <BaseButton variant="outline">
@@ -232,8 +195,8 @@ import AppFooter from '@/components/AppFooter.vue'
 import AppHeader from '@/components/AppHeader.vue'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseCard from '@/components/BaseCard.vue'
-import { getInterviewReport, getInterviewSession, getLearningRoadmap } from '@/api/interview'
-import type { InterviewResult, InterviewSessionDetails, LearningRoadmapResponse } from '@/types/api'
+import { getInterviewReport, getInterviewSession } from '@/api/interview'
+import type { InterviewResult, InterviewSessionDetails } from '@/types/api'
 import { useI18n } from '@/i18n'
 
 const route = useRoute()
@@ -241,12 +204,9 @@ const { locale, t } = useI18n()
 const sessionId = String(route.params.sessionId ?? '')
 const result = ref<InterviewResult | null>(null)
 const sessionDetails = ref<InterviewSessionDetails | null>(null)
-const roadmap = ref<LearningRoadmapResponse | null>(null)
 const isLoading = ref(true)
 const isRetrying = ref(false)
-const isLoadingRoadmap = ref(false)
 const reportError = ref('')
-const roadmapError = ref('')
 const isVacancyApplication = computed(() => sessionDetails.value?.sessionType === 'VACANCY_APPLICATION')
 const canContinueVacancyInterview = computed(() => sessionDetails.value?.status === 'CREATED' || sessionDetails.value?.status === 'IN_PROGRESS')
 const vacancyStatusTitle = computed(() => {
@@ -275,24 +235,11 @@ async function loadReport() {
   }
 }
 
-async function loadRoadmap() {
-  isLoadingRoadmap.value = true
-  roadmapError.value = ''
-  try {
-    roadmap.value = await getLearningRoadmap(sessionId, locale.value)
-  } catch (err) {
-    roadmapError.value = err instanceof Error ? err.message : t('results.roadmapFailed')
-  } finally {
-    isLoadingRoadmap.value = false
-  }
-}
-
 onMounted(async () => {
   try {
     sessionDetails.value = await getInterviewSession(sessionId)
     if (sessionDetails.value.sessionType === 'MOCK') {
       await loadReport()
-      if (result.value) await loadRoadmap()
       return
     }
   } catch (err) {
@@ -340,12 +287,13 @@ function scoreLabel(score: number | null | undefined) {
   return percent === null ? t('results.notEvaluated') : `${percent}%`
 }
 
-function questionSourceLabel(sourceType: string) {
-  return t(`results.sourceType.${sourceType}` as any)
+function scoreWidth(score: number | null | undefined) {
+  const percent = normalizedPercent(score)
+  return percent === null ? '0%' : `${percent}%`
 }
 
-function roadmapScoreLabel(score: number | null | undefined) {
-  return typeof score === 'number' ? `${Math.round(score * 100)}%` : '—'
+function questionSourceLabel(sourceType: string) {
+  return t(`results.sourceType.${sourceType}` as any)
 }
 
 function formatScore10(score: number | null | undefined) {

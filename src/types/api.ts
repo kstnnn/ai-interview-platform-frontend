@@ -83,9 +83,9 @@ export type STOMPEvent = {
 export type InterviewTopicResult = {
   topic: string
   questionsAsked: number
-  masteryScore: number
-  confidenceScore: number
-  avgScore: number
+  masteryScore: number | null
+  confidenceScore: number | null
+  avgScore: number | null
 }
 
 export type InterviewQuestionReport = {
@@ -243,19 +243,57 @@ export type VacancyQuestionResponse = {
 
 export type VacancyApplicationRequest = {
   coverLetter?: string | null
+  candidateContacts: CandidateContacts
 }
 
 export type ApplicationStatus = 'INTERVIEW_CREATED' | 'INTERVIEW_IN_PROGRESS' | 'INTERVIEW_COMPLETED' | 'REJECTED' | 'WITHDRAWN'
+export type ApplicationRecommendation = 'STRONG_YES' | 'YES' | 'MAYBE' | 'NO' | 'STRONG_NO'
+
+export type CandidateContacts = {
+  email: string | null
+  phone: string | null
+  telegram: string | null
+  linkedIn: string | null
+  portfolioUrl: string | null
+  hhResumeUrl: string | null
+}
+
+export type ApplicationCandidate = {
+  userId: string
+  firstName: string | null
+  lastName: string | null
+  email: string | null
+  contacts: CandidateContacts
+}
 
 export type VacancyApplicationResponse = {
   applicationId: string
   vacancyId: string
   candidateUserId: string
+  candidateName?: string | null
+  candidateContacts: CandidateContacts
   status: ApplicationStatus
-  interviewSessionId: string
+  interviewSessionId: string | null
+  sessionConfidence?: number | null
+  recommendation?: ApplicationRecommendation | null
   coverLetter: string | null
   createdAt: string
   updatedAt: string
+  completedAt?: string | null
 }
 
 export type VacancyApplicationSummary = VacancyApplicationResponse
+
+export type EmployerApplicationReport = {
+  applicationId: string
+  vacancyId: string
+  interviewSessionId: string
+  candidate: ApplicationCandidate
+  status: ApplicationStatus
+  sessionConfidence: number | null
+  recommendation: ApplicationRecommendation | null
+  topics: InterviewTopicResult[]
+  questions: InterviewQuestionReport[]
+  createdAt: string
+  completedAt: string | null
+}

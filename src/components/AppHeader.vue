@@ -9,12 +9,9 @@
       </RouterLink>
 
       <nav class="hidden items-center gap-6 lg:flex">
-        <a href="/#features" class="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">{{ t('nav.features') }}</a>
-        <RouterLink to="/vacancies" class="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">{{ t('nav.vacancies') }}</RouterLink>
-        <RouterLink to="/user" class="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">{{ t('nav.users') }}</RouterLink>
-        <RouterLink to="/business" class="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">{{ t('nav.business') }}</RouterLink>
-        <RouterLink to="/dashboard" class="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">{{ t('nav.sessions') }}</RouterLink>
-        <RouterLink to="/candidate/join" class="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">{{ t('nav.join') }}</RouterLink>
+        <RouterLink v-for="item in navItems" :key="item.to" :to="item.to" class="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+          {{ t(item.labelKey) }}
+        </RouterLink>
       </nav>
 
       <div class="flex items-center gap-2">
@@ -25,7 +22,7 @@
         <RouterLink v-if="!isAuthenticated" to="/sign-up">
           <BaseButton size="sm">Sign up</BaseButton>
         </RouterLink>
-        <RouterLink v-if="isAuthenticated" to="/user" class="hidden text-sm font-semibold text-foreground sm:inline-flex">
+        <RouterLink v-if="isAuthenticated" :to="profileRoute" class="hidden text-sm font-semibold text-foreground sm:inline-flex">
           {{ displayName }}
         </RouterLink>
         <RouterLink v-if="isAuthenticated" to="/auth/logout">
@@ -37,15 +34,50 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ClipboardCheck } from 'lucide-vue-next'
 import BaseButton from '@/components/BaseButton.vue'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
 import { useAuth } from '@/composables/useAuth'
+import { getDefaultWorkspaceRoute, useAppSession } from '@/composables/useAppSession'
 import { useI18n } from '@/i18n'
+
+type NavLabelKey = 'nav.features' | 'nav.vacancies' | 'nav.practice' | 'nav.roadmap' | 'nav.workspace' | 'nav.business' | 'nav.publicVacancies'
+
+type NavItem = {
+  labelKey: NavLabelKey
+  to: string
+}
 
 const { t } = useI18n()
 const { displayName, initializeAuthState, isAuthenticated } = useAuth()
+const { userType } = useAppSession()
+
+const profileRoute = computed(() => getDefaultWorkspaceRoute(userType.value))
+const navItems = computed<NavItem[]>(() => {
+  if (!isAuthenticated.value) {
+    return [
+      { labelKey: 'nav.features', to: '/#features' },
+      { labelKey: 'nav.vacancies', to: '/vacancies' },
+    ]
+  }
+
+  if (userType.value === 'BUSINESS') {
+    return [
+      { labelKey: 'nav.business', to: '/business' },
+      { labelKey: 'nav.vacancies', to: '/business/vacancies' },
+      { labelKey: 'nav.publicVacancies', to: '/vacancies' },
+    ]
+  }
+
+  return [
+    { labelKey: 'nav.workspace', to: '/user' },
+    { labelKey: 'nav.practice', to: '/user/mock-interview/new' },
+    { labelKey: 'nav.roadmap', to: '/user/roadmap' },
+    { labelKey: 'nav.vacancies', to: '/vacancies' },
+  ]
+})
 
 void initializeAuthState()
 </script>

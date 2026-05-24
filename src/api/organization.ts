@@ -2,6 +2,7 @@ import { organizationRequest, publicOrganizationRequest } from '@/api/client'
 import type {
   CreateOrganizationRequest,
   CreateVacancyRequest,
+  EmployerApplicationReport,
   OrganizationResponse,
   UpdateVacancyRequest,
   VacancyApplicationRequest,
@@ -115,4 +116,8 @@ export function getApplication(applicationId: string) {
 
 export function getVacancyApplications(vacancyId: string) {
   return organizationRequest<VacancyApplicationSummary[]>(`/vacancies/${vacancyId}/applications`)
+}
+
+export function getVacancyApplicationReport(vacancyId: string, applicationId: string) {
+  return organizationRequest<EmployerApplicationReport>(`/vacancies/${vacancyId}/applications/${applicationId}/report`)
 }

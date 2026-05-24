@@ -237,6 +237,7 @@ const autoSpeakQuestions = ref(true)
 const secondsElapsed = ref(0)
 const timerId = ref<number | null>(null)
 const textInput = ref('')
+let hasRequestedStart = false
 
 function stripThinkingTags(text: string) {
   const pattern = new RegExp('<think>[\\s\\S]*?</think>', 'g')
@@ -324,6 +325,19 @@ function goToResults() {
   void router.push(`/results/${sessionId}`)
 }
 
+function requestInterviewStart() {
+  if (hasRequestedStart) return
+  hasRequestedStart = true
+  window.setTimeout(() => {
+    sendStart({
+      candidateName: displayName.value,
+      technologies: technologyKeys.value,
+      interviewLevel: interviewLevel.value,
+      interviewLanguage: interviewLanguage.value,
+    })
+  }, 500)
+}
+
 watch(
   messages,
   async () => {
@@ -366,24 +380,22 @@ onMounted(async () => {
     return
   }
 
+  const unwatch = watch(isConnected, (connected) => {
+    if (connected) {
+      unwatch()
+      requestInterviewStart()
+    }
+  })
+
   connect(sessionId, token)
+
+  if (isConnected.value) {
+    unwatch()
+    requestInterviewStart()
+  }
 
   timerId.value = window.setInterval(() => {
     secondsElapsed.value += 1
   }, 1000)
-
-  const unwatch = watch(isConnected, (connected) => {
-    if (connected) {
-      unwatch()
-      window.setTimeout(() => {
-        sendStart({
-          candidateName: displayName.value,
-          technologies: technologyKeys.value,
-          interviewLevel: interviewLevel.value,
-          interviewLanguage: interviewLanguage.value,
-        })
-      }, 500)
-    }
-  })
 })
 </script>

@@ -1,6 +1,14 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { getCurrentUser, isZitadelConfigured } from '@/auth/zitadel'
 import { getDefaultWorkspaceRoute, loadAppSession } from '@/composables/useAppSession'
+import type { UserType } from '@/types/api'
+
+declare module 'vue-router' {
+  interface RouteMeta {
+    requiresAuth?: boolean
+    requiresUserType?: UserType
+  }
+}
 
 const router = createRouter({
   history: createWebHistory(),
@@ -41,52 +49,58 @@ const router = createRouter({
       component: () => import('@/views/LogoutCallbackView.vue'),
     },
     {
-      path: '/dashboard',
-      name: 'dashboard',
-      component: () => import('@/views/DashboardView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
       path: '/user',
       name: 'user-workspace',
       component: () => import('@/views/UserWorkspaceView.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresUserType: 'PERSONAL' },
     },
     {
       path: '/user/mock-interview/new',
       name: 'mock-interview-setup',
       component: () => import('@/views/MockInterviewSetupView.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresUserType: 'PERSONAL' },
     },
     {
       path: '/user/roadmap',
       name: 'learning-roadmap',
       component: () => import('@/views/LearningRoadmapView.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresUserType: 'PERSONAL' },
     },
     {
       path: '/business',
       name: 'business-workspace',
       component: () => import('@/views/BusinessWorkspaceView.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresUserType: 'BUSINESS' },
     },
     {
       path: '/business/vacancies',
       name: 'vacancies',
       component: () => import('@/views/VacanciesView.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresUserType: 'BUSINESS' },
     },
     {
       path: '/business/vacancies/new',
       name: 'vacancy-builder',
       component: () => import('@/views/VacancyBuilderView.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresUserType: 'BUSINESS' },
     },
     {
       path: '/business/vacancies/:vacancyId',
       name: 'vacancy-detail',
       component: () => import('@/views/VacancyDetailView.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresUserType: 'BUSINESS' },
+    },
+    {
+      path: '/business/vacancies/:vacancyId/applications',
+      name: 'business-vacancy-applications',
+      component: () => import('@/views/BusinessVacancyApplicationsView.vue'),
+      meta: { requiresAuth: true, requiresUserType: 'BUSINESS' },
+    },
+    {
+      path: '/business/vacancies/:vacancyId/applications/:applicationId/report',
+      name: 'employer-application-report',
+      component: () => import('@/views/EmployerApplicationReportView.vue'),
+      meta: { requiresAuth: true, requiresUserType: 'BUSINESS' },
     },
     {
       path: '/vacancies',
@@ -102,13 +116,7 @@ const router = createRouter({
       path: '/vacancies/:vacancyId/apply',
       name: 'public-vacancy-apply',
       component: () => import('@/views/PublicVacancyApplyView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/candidate/join',
-      name: 'candidate-join',
-      component: () => import('@/views/CandidateJoinView.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresUserType: 'PERSONAL' },
     },
     {
       path: '/candidate/interview/:sessionId',
@@ -125,12 +133,6 @@ const router = createRouter({
       path: '/results/:sessionId',
       name: 'results',
       component: () => import('@/views/ResultsView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/sessions/:sessionId/report',
-      name: 'session-report',
-      component: () => import('@/views/SessionReportView.vue'),
       meta: { requiresAuth: true },
     },
   ],
@@ -159,6 +161,9 @@ router.beforeEach(async (to) => {
     const appUser = await loadAppSession(sub)
     if (!appUser) {
       return { name: 'onboarding' }
+    }
+    if (to.meta.requiresUserType && appUser.userType !== to.meta.requiresUserType) {
+      return getDefaultWorkspaceRoute(appUser.userType)
     }
   } catch {
     return { name: 'onboarding' }

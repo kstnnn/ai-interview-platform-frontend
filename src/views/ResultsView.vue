@@ -5,6 +5,25 @@
     </BaseCard>
   </div>
 
+  <div v-else-if="isVacancyApplication" class="flex min-h-screen flex-col bg-background">
+    <AppHeader />
+    <main class="flex flex-1 items-center justify-center px-4 py-12 text-center sm:px-6 lg:px-8">
+      <BaseCard class="max-w-lg p-8">
+        <h1 class="text-2xl font-bold text-foreground">{{ vacancyStatusTitle }}</h1>
+        <p class="mt-3 leading-relaxed text-muted-foreground">{{ vacancyStatusDescription }}</p>
+        <div class="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+          <RouterLink v-if="canContinueVacancyInterview" :to="`/candidate/interview/${sessionId}`">
+            <BaseButton>{{ t('userWorkspace.continueInterview') }}</BaseButton>
+          </RouterLink>
+          <RouterLink to="/user">
+            <BaseButton variant="outline">{{ t('results.backToWorkspace') }}</BaseButton>
+          </RouterLink>
+        </div>
+      </BaseCard>
+    </main>
+    <AppFooter />
+  </div>
+
   <div v-else-if="result" class="flex min-h-screen flex-col bg-background">
     <AppHeader />
 
@@ -20,7 +39,7 @@
             <div>
               <h2 class="font-semibold text-foreground">{{ t('results.fullReportFailed') }}</h2>
               <p class="mt-1 text-sm text-muted-foreground">
-                {{ reportSource === 'fallback' ? t('results.localFallbackShown') : reportError }}
+                  {{ reportError }}
               </p>
             </div>
             <BaseButton variant="outline" :disabled="isRetrying" @click="loadReport">
@@ -51,10 +70,10 @@
             <div v-for="topic in result.topics" :key="topic.topic" class="rounded-[1.5rem] bg-muted/40 p-4">
               <div class="flex items-center justify-between">
                 <h3 class="font-semibold text-foreground">{{ topicLabel(topic.topic) }}</h3>
-                <span class="text-sm font-bold text-primary">{{ Math.round(topic.masteryScore * 100) }}%</span>
+                <span class="text-sm font-bold text-primary">{{ scoreLabel(topic.masteryScore) }}</span>
               </div>
               <div class="mt-2 h-2 overflow-hidden rounded-full bg-background/50">
-                <div class="h-full rounded-full bg-primary" :style="{ width: `${Math.round(topic.masteryScore * 100)}%` }"></div>
+                <div class="h-full rounded-full bg-primary" :style="{ width: scoreWidth(topic.masteryScore) }"></div>
               </div>
               <div class="mt-3 grid grid-cols-3 gap-4 text-center text-xs text-muted-foreground">
                 <div>
@@ -66,7 +85,7 @@
                   <p>{{ t('results.avgScore') }}</p>
                 </div>
                 <div>
-                  <p class="font-semibold text-foreground">{{ Math.round(topic.confidenceScore * 100) }}%</p>
+                  <p class="font-semibold text-foreground">{{ scoreLabel(topic.confidenceScore) }}</p>
                   <p>{{ t('results.confidence') }}</p>
                 </div>
               </div>
@@ -147,6 +166,9 @@
           <RouterLink to="/user/mock-interview/new">
             <BaseButton>{{ t('results.newInterview') }}</BaseButton>
           </RouterLink>
+          <RouterLink to="/user/roadmap">
+            <BaseButton variant="outline">{{ t('results.openFullRoadmap') }}</BaseButton>
+          </RouterLink>
         </div>
       </div>
     </main>
@@ -173,28 +195,30 @@ import AppFooter from '@/components/AppFooter.vue'
 import AppHeader from '@/components/AppHeader.vue'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseCard from '@/components/BaseCard.vue'
-import { getInterviewReport } from '@/api/interview'
-import type { InterviewResult } from '@/types/api'
+import { getInterviewReport, getInterviewSession } from '@/api/interview'
+import type { InterviewResult, InterviewSessionDetails } from '@/types/api'
 import { useI18n } from '@/i18n'
 
 const route = useRoute()
 const { locale, t } = useI18n()
 const sessionId = String(route.params.sessionId ?? '')
 const result = ref<InterviewResult | null>(null)
+const sessionDetails = ref<InterviewSessionDetails | null>(null)
 const isLoading = ref(true)
 const isRetrying = ref(false)
 const reportError = ref('')
-const reportSource = ref<'backend' | 'fallback' | null>(null)
-
-function readFallbackResult() {
-  const stored = localStorage.getItem(`interviewResult_${sessionId}`)
-  if (!stored) return null
-  try {
-    return JSON.parse(stored) as InterviewResult
-  } catch {
-    return null
-  }
-}
+const isVacancyApplication = computed(() => sessionDetails.value?.sessionType === 'VACANCY_APPLICATION')
+const canContinueVacancyInterview = computed(() => sessionDetails.value?.status === 'CREATED' || sessionDetails.value?.status === 'IN_PROGRESS')
+const vacancyStatusTitle = computed(() => {
+  if (canContinueVacancyInterview.value) return t('results.vacancyInProgressTitle')
+  if (sessionDetails.value?.status === 'CANCELLED') return t('results.vacancyCancelledTitle')
+  return t('results.vacancyCompletedTitle')
+})
+const vacancyStatusDescription = computed(() => {
+  if (canContinueVacancyInterview.value) return t('results.vacancyInProgressDesc')
+  if (sessionDetails.value?.status === 'CANCELLED') return t('results.vacancyCancelledDesc')
+  return t('results.vacancyCompletedDesc')
+})
 
 async function loadReport() {
   isRetrying.value = !isLoading.value
@@ -202,12 +226,9 @@ async function loadReport() {
 
   try {
     result.value = await getInterviewReport(sessionId)
-    reportSource.value = 'backend'
-    localStorage.setItem(`interviewResult_${sessionId}`, JSON.stringify(result.value))
   } catch (err) {
     reportError.value = err instanceof Error ? err.message : t('results.fullReportFailed')
-    result.value = readFallbackResult()
-    reportSource.value = result.value ? 'fallback' : null
+    result.value = null
   } finally {
     isLoading.value = false
     isRetrying.value = false
@@ -215,7 +236,17 @@ async function loadReport() {
 }
 
 onMounted(async () => {
-  await loadReport()
+  try {
+    sessionDetails.value = await getInterviewSession(sessionId)
+    if (sessionDetails.value.sessionType === 'MOCK') {
+      await loadReport()
+      return
+    }
+  } catch (err) {
+    reportError.value = err instanceof Error ? err.message : t('results.fullReportFailed')
+  } finally {
+    isLoading.value = false
+  }
 })
 
 const topicLabels: Record<string, { en: string; ru: string }> = {
@@ -254,6 +285,11 @@ function normalizedPercent(score: number | null | undefined) {
 function scoreLabel(score: number | null | undefined) {
   const percent = normalizedPercent(score)
   return percent === null ? t('results.notEvaluated') : `${percent}%`
+}
+
+function scoreWidth(score: number | null | undefined) {
+  const percent = normalizedPercent(score)
+  return percent === null ? '0%' : `${percent}%`
 }
 
 function questionSourceLabel(sourceType: string) {

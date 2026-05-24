@@ -85,6 +85,10 @@ export async function getCurrentUser() {
 
 export async function getAccessToken() {
   const user = await getCurrentUser()
+  if (!user || user.expired) {
+    return null
+  }
+
   return user?.access_token ?? null
 }
 

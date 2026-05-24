@@ -24,6 +24,7 @@ export type UserResponse = {
 
 export type InterviewLevel = 'JUNIOR' | 'MIDDLE' | 'SENIOR'
 export type InterviewLanguage = 'Russian' | 'English'
+export type InterviewSessionType = 'MOCK' | 'VACANCY_APPLICATION'
 
 export type CreateInterviewRequest = {
   userId: string
@@ -49,6 +50,7 @@ export type InterviewSessionStatus = 'CREATED' | 'IN_PROGRESS' | 'COMPLETED' | '
 
 export type InterviewSessionSummary = {
   sessionId: string
+  sessionType: InterviewSessionType
   status: InterviewSessionStatus
   interviewLevel: InterviewLevel
   interviewLanguage: InterviewLanguage
@@ -57,6 +59,18 @@ export type InterviewSessionSummary = {
   startedAt: string | null
   finishedAt: string | null
   questionsAsked: number
+}
+
+export type InterviewSessionDetails = {
+  sessionId: string
+  sessionType: InterviewSessionType
+  status: InterviewSessionStatus
+  interviewLevel: InterviewLevel
+  interviewLanguage: InterviewLanguage
+  vacancyId: string | null
+  applicationId: string | null
+  startedAt: string | null
+  finishedAt: string | null
 }
 
 export type STOMPEventType = 'GREETING' | 'QUESTION_ASKED' | 'ANSWER_EVALUATED' | 'FEEDBACK' | 'SESSION_FINISHED' | 'ERROR'
@@ -69,9 +83,9 @@ export type STOMPEvent = {
 export type InterviewTopicResult = {
   topic: string
   questionsAsked: number
-  masteryScore: number
-  confidenceScore: number
-  avgScore: number
+  masteryScore: number | null
+  confidenceScore: number | null
+  avgScore: number | null
 }
 
 export type InterviewQuestionReport = {
@@ -104,6 +118,41 @@ export type InterviewResult = {
   finishedAt?: string | null
   topics: InterviewTopicResult[]
   questions?: InterviewQuestionReport[]
+}
+
+export type LearningRoadmapTrend = 'IMPROVING' | 'DECLINING' | 'STABLE' | 'NEW'
+export type LearningRoadmapPriority = 'HIGH' | 'MEDIUM' | 'LOW'
+export type LearningRoadmapResourceType = 'ARTICLE' | 'DOC' | 'VIDEO' | 'PRACTICE' | string
+
+export type LearningRoadmapResource = {
+  title: string
+  url: string
+  type: LearningRoadmapResourceType
+  language: LocaleString
+}
+
+export type LocaleString = 'en' | 'ru' | string
+
+export type LearningRoadmapTopic = {
+  topic: string
+  score?: number
+  currentScore?: number
+  previousScore?: number | null
+  trend?: LearningRoadmapTrend
+  priority?: LearningRoadmapPriority
+  reason: string
+  recommendedActions: string[]
+  resources: LearningRoadmapResource[]
+}
+
+export type LearningRoadmapResponse = {
+  sessionId?: string
+  userId?: string
+  language: LocaleString
+  updatedAt?: string
+  sourceSessionIds?: string[]
+  summary: string
+  priorityTopics: LearningRoadmapTopic[]
 }
 
 export type OrganizationStatus = 'ACTIVE' | 'ARCHIVED'
@@ -194,19 +243,57 @@ export type VacancyQuestionResponse = {
 
 export type VacancyApplicationRequest = {
   coverLetter?: string | null
+  candidateContacts: CandidateContacts
 }
 
 export type ApplicationStatus = 'INTERVIEW_CREATED' | 'INTERVIEW_IN_PROGRESS' | 'INTERVIEW_COMPLETED' | 'REJECTED' | 'WITHDRAWN'
+export type ApplicationRecommendation = 'STRONG_YES' | 'YES' | 'MAYBE' | 'NO' | 'STRONG_NO'
+
+export type CandidateContacts = {
+  email: string | null
+  phone: string | null
+  telegram: string | null
+  linkedIn: string | null
+  portfolioUrl: string | null
+  hhResumeUrl: string | null
+}
+
+export type ApplicationCandidate = {
+  userId: string
+  firstName: string | null
+  lastName: string | null
+  email: string | null
+  contacts: CandidateContacts
+}
 
 export type VacancyApplicationResponse = {
   applicationId: string
   vacancyId: string
   candidateUserId: string
+  candidateName?: string | null
+  candidateContacts: CandidateContacts
   status: ApplicationStatus
-  interviewSessionId: string
+  interviewSessionId: string | null
+  sessionConfidence?: number | null
+  recommendation?: ApplicationRecommendation | null
   coverLetter: string | null
   createdAt: string
   updatedAt: string
+  completedAt?: string | null
 }
 
 export type VacancyApplicationSummary = VacancyApplicationResponse
+
+export type EmployerApplicationReport = {
+  applicationId: string
+  vacancyId: string
+  interviewSessionId: string
+  candidate: ApplicationCandidate
+  status: ApplicationStatus
+  sessionConfidence: number | null
+  recommendation: ApplicationRecommendation | null
+  topics: InterviewTopicResult[]
+  questions: InterviewQuestionReport[]
+  createdAt: string
+  completedAt: string | null
+}

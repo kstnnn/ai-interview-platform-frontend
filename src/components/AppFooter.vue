@@ -16,19 +16,16 @@
               <RouterLink to="/vacancies">{{ t('nav.vacancies') }}</RouterLink>
             </li>
             <li>
-              <RouterLink to="/user">User Workspace</RouterLink>
+              <RouterLink to="/user">{{ t('nav.workspace') }}</RouterLink>
             </li>
             <li>
-              <RouterLink to="/business">Business Workspace</RouterLink>
+              <RouterLink to="/user/mock-interview/new">{{ t('nav.practice') }}</RouterLink>
             </li>
             <li>
-              <RouterLink to="/business/vacancies">Vacancies</RouterLink>
+              <RouterLink to="/user/roadmap">{{ t('nav.roadmap') }}</RouterLink>
             </li>
             <li>
-              <RouterLink to="/dashboard">Sessions</RouterLink>
-            </li>
-            <li>
-              <RouterLink to="/candidate/join">Candidate Join</RouterLink>
+              <RouterLink to="/business">{{ t('nav.business') }}</RouterLink>
             </li>
           </ul>
         </div>

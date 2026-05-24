@@ -43,7 +43,7 @@ import { useAuth } from '@/composables/useAuth'
 import { getDefaultWorkspaceRoute, useAppSession } from '@/composables/useAppSession'
 import { useI18n } from '@/i18n'
 
-type NavLabelKey = 'nav.features' | 'nav.vacancies' | 'nav.practice' | 'nav.roadmap' | 'nav.workspace' | 'nav.business' | 'nav.publicVacancies'
+type NavLabelKey = 'nav.features' | 'nav.vacancies' | 'nav.practice' | 'nav.roadmap' | 'nav.workspace' | 'nav.business' | 'nav.publicVacancies' | 'nav.admin' | 'nav.adminUsers' | 'nav.adminQuestions'
 
 type NavItem = {
   labelKey: NavLabelKey
@@ -52,14 +52,30 @@ type NavItem = {
 
 const { t } = useI18n()
 const { displayName, initializeAuthState, isAuthenticated } = useAuth()
-const { userType } = useAppSession()
+const { isAdmin, userStatus, userType } = useAppSession()
 
-const profileRoute = computed(() => getDefaultWorkspaceRoute(userType.value))
+const isBlockedAccount = computed(() => userStatus.value === 'BLOCKED' || userStatus.value === 'DELETED')
+const profileRoute = computed(() => {
+  if (isBlockedAccount.value) return '/blocked'
+  return isAdmin.value ? '/admin' : getDefaultWorkspaceRoute(userType.value)
+})
 const navItems = computed<NavItem[]>(() => {
   if (!isAuthenticated.value) {
     return [
       { labelKey: 'nav.features', to: '/#features' },
       { labelKey: 'nav.vacancies', to: '/vacancies' },
+    ]
+  }
+
+  if (isBlockedAccount.value) {
+    return []
+  }
+
+  if (isAdmin.value) {
+    return [
+      { labelKey: 'nav.adminUsers', to: '/admin/users' },
+      { labelKey: 'nav.adminQuestions', to: '/admin/questions' },
+      { labelKey: 'nav.publicVacancies', to: '/vacancies' },
     ]
   }
 

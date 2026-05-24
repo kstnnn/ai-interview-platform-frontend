@@ -35,13 +35,13 @@ import type { User } from 'oidc-client-ts'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseCard from '@/components/BaseCard.vue'
 import { useAuth } from '@/composables/useAuth'
-import { getDefaultWorkspaceRoute, useAppSession } from '@/composables/useAppSession'
+import { getDefaultRouteForSession, useAppSession } from '@/composables/useAppSession'
 import { useI18n } from '@/i18n'
 
 const router = useRouter()
 const { t } = useI18n()
 const { completeCallback, error: callbackError, logout } = useAuth()
-const { error: appSessionError, loadAppSession, userType } = useAppSession()
+const { error: appSessionError, loadAppSession, roles } = useAppSession()
 const hasError = ref(false)
 
 const isStateError = computed(() => callbackError.value.toLowerCase().includes('session state was lost'))
@@ -57,8 +57,17 @@ onMounted(async () => {
       return
     }
 
+    let appUser
     try {
-      await loadAppSession(sub, true)
+      appUser = await loadAppSession(sub, true)
+      if (appUser?.userStatus === 'BLOCKED' || appUser?.userStatus === 'DELETED') {
+        await router.replace('/blocked')
+        return
+      }
+      if (appUser?.userStatus === 'PENDING_ONBOARDING') {
+        await router.replace('/onboarding')
+        return
+      }
     } catch (err: any) {
       if (err?.code === 'USER_NOT_FOUND' || err?.status === 404) {
         await router.replace('/onboarding')
@@ -67,7 +76,7 @@ onMounted(async () => {
       throw err
     }
 
-    await router.replace(getDefaultWorkspaceRoute(userType.value))
+    await router.replace(getResolvedRedirect(zitadelUser, appUser?.userType))
   } catch {
     hasError.value = true
   }
@@ -85,8 +94,17 @@ async function retry() {
       return
     }
 
+    let appUser
     try {
-      await loadAppSession(sub, true)
+      appUser = await loadAppSession(sub, true)
+      if (appUser?.userStatus === 'BLOCKED' || appUser?.userStatus === 'DELETED') {
+        await router.replace('/blocked')
+        return
+      }
+      if (appUser?.userStatus === 'PENDING_ONBOARDING') {
+        await router.replace('/onboarding')
+        return
+      }
     } catch (err: any) {
       if (err?.code === 'USER_NOT_FOUND' || err?.status === 404) {
         await router.replace('/onboarding')
@@ -95,7 +113,7 @@ async function retry() {
       throw err
     }
 
-    await router.replace(getDefaultWorkspaceRoute(userType.value))
+    await router.replace(getResolvedRedirect(zitadelUser, appUser?.userType))
   } catch {
     hasError.value = true
   }
@@ -116,5 +134,14 @@ function getCallbackRedirect(user: User | null) {
   }
 
   return null
+}
+
+function getResolvedRedirect(user: User | null, nextUserType?: 'PERSONAL' | 'BUSINESS' | null) {
+  const returnTo = getCallbackRedirect(user)
+  if (returnTo && returnTo !== '/') {
+    return returnTo
+  }
+
+  return getDefaultRouteForSession(nextUserType, roles.value)
 }
 </script>

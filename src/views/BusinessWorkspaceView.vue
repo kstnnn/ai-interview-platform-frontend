@@ -80,7 +80,19 @@
 
             <BaseCard class="p-8">
               <h2 class="text-xl font-bold text-foreground">{{ t('businessWorkspace.pipelineTitle') }}</h2>
-              <p class="mt-5 rounded-[1.5rem] bg-muted/45 p-5 text-sm text-muted-foreground">{{ t('businessWorkspace.pipelinePlaceholder') }}</p>
+              <p class="mt-2 text-sm text-muted-foreground">{{ t('businessWorkspace.pipelineDesc') }}</p>
+              <div v-if="vacancies.length === 0" class="mt-5 rounded-[1.5rem] bg-muted/45 p-5 text-sm text-muted-foreground">{{ t('businessWorkspace.noVacancies') }}</div>
+              <div v-else class="mt-5 space-y-3">
+                <RouterLink v-for="vacancy in vacancies" :key="vacancy.id" :to="`/business/vacancies/${vacancy.id}/applications`" class="block rounded-[1.5rem] border border-border/60 p-4 transition hover:border-primary/40 hover:bg-muted/30">
+                  <div class="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 class="font-semibold text-foreground">{{ vacancy.title }}</h3>
+                      <p class="mt-1 text-xs text-muted-foreground">{{ vacancyStatusLabel(vacancy.status, t) }} · {{ vacancyLevelLabel(vacancy.level, t) }}</p>
+                    </div>
+                    <span class="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{{ t('applications.viewAll') }}</span>
+                  </div>
+                </RouterLink>
+              </div>
             </BaseCard>
           </section>
         </template>

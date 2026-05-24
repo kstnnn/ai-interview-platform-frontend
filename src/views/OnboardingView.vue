@@ -115,7 +115,6 @@ async function submitOnboarding() {
     userType: form.userType,
     firstName: form.firstName,
     lastName: form.lastName || null,
-    roles: ['CANDIDATE'],
   })
 
   await router.replace(getDefaultWorkspaceRoute(userType.value))

@@ -31,16 +31,16 @@
 
           <div class="mt-20 grid grid-cols-1 gap-6 sm:grid-cols-3">
             <BaseCard class="p-6">
-              <div class="text-3xl font-bold text-primary">Mock</div>
-              <p class="mt-2 text-sm text-muted-foreground">Users can run practice interviews by stack, level, duration, and focus.</p>
+              <div class="text-3xl font-bold text-primary">{{ t('home.card.mockTitle') }}</div>
+              <p class="mt-2 text-sm text-muted-foreground">{{ t('home.card.mockDesc') }}</p>
             </BaseCard>
             <BaseCard class="p-6">
-              <div class="text-3xl font-bold text-secondary">AI Plan</div>
-              <p class="mt-2 text-sm text-muted-foreground">Results become feedback, articles, practice tasks, and a learning roadmap.</p>
+              <div class="text-3xl font-bold text-secondary">{{ t('home.card.aiPlanTitle') }}</div>
+              <p class="mt-2 text-sm text-muted-foreground">{{ t('home.card.aiPlanDesc') }}</p>
             </BaseCard>
             <BaseCard class="p-6">
-              <div class="text-3xl font-bold text-primary">Hiring</div>
-              <p class="mt-2 text-sm text-muted-foreground">Businesses manage vacancies, custom questions, candidate invites, and reports.</p>
+              <div class="text-3xl font-bold text-primary">{{ t('home.card.hiringTitle') }}</div>
+              <p class="mt-2 text-sm text-muted-foreground">{{ t('home.card.hiringDesc') }}</p>
             </BaseCard>
           </div>
         </div>
@@ -49,27 +49,27 @@
       <section id="features" class="bg-muted/20 px-4 py-24 sm:px-6 lg:px-8">
         <div class="mx-auto max-w-6xl">
           <div class="mb-16 text-center">
-            <h2 class="font-serif text-4xl font-bold text-foreground sm:text-5xl">Product areas now represented</h2>
+            <h2 class="font-serif text-4xl font-bold text-foreground sm:text-5xl">{{ t('home.featuresTitle') }}</h2>
             <p class="mx-auto mt-4 max-w-2xl text-lg text-muted-foreground">
-              The platform now connects live auth, public vacancies, applications, AI interviews, reports, and learning roadmaps.
+              {{ t('home.featuresSubtitle') }}
             </p>
           </div>
 
           <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             <BaseCard class="p-8">
               <Mic class="h-6 w-6 text-primary" />
-              <h3 class="mt-4 font-serif text-lg font-bold">Mock interviews</h3>
-              <p class="mt-2 text-sm leading-relaxed text-muted-foreground">Personal practice interviews run through the live AI interview flow and produce reports.</p>
+              <h3 class="mt-4 font-serif text-lg font-bold">{{ t('home.feature.mockTitle') }}</h3>
+              <p class="mt-2 text-sm leading-relaxed text-muted-foreground">{{ t('home.feature.mockDesc') }}</p>
             </BaseCard>
             <BaseCard class="p-8">
               <LayoutDashboard class="h-6 w-6 text-secondary" />
-              <h3 class="mt-4 font-serif text-lg font-bold">Business workspace</h3>
-              <p class="mt-2 text-sm leading-relaxed text-muted-foreground">Organizations can create vacancies, define stack, and add optional questions.</p>
+              <h3 class="mt-4 font-serif text-lg font-bold">{{ t('home.feature.businessTitle') }}</h3>
+              <p class="mt-2 text-sm leading-relaxed text-muted-foreground">{{ t('home.feature.businessDesc') }}</p>
             </BaseCard>
             <BaseCard class="p-8">
               <FileBarChart class="h-6 w-6 text-primary" />
-              <h3 class="mt-4 font-serif text-lg font-bold">AI feedback</h3>
-              <p class="mt-2 text-sm leading-relaxed text-muted-foreground">Completed mock interviews feed detailed reports and a dynamic learning roadmap.</p>
+              <h3 class="mt-4 font-serif text-lg font-bold">{{ t('home.feature.feedbackTitle') }}</h3>
+              <p class="mt-2 text-sm leading-relaxed text-muted-foreground">{{ t('home.feature.feedbackDesc') }}</p>
             </BaseCard>
           </div>
         </div>
@@ -81,13 +81,52 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { FileBarChart, LayoutDashboard, Mic } from 'lucide-vue-next'
+import { getCurrentUser } from '@/auth/zitadel'
 import AppFooter from '@/components/AppFooter.vue'
 import AppHeader from '@/components/AppHeader.vue'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseCard from '@/components/BaseCard.vue'
+import { getDefaultRouteForSession, loadAppSession, useAppSession } from '@/composables/useAppSession'
 import { useI18n } from '@/i18n'
 
 const { t } = useI18n()
+const router = useRouter()
+const { roles } = useAppSession()
+
+onMounted(async () => {
+  try {
+    const zitadelUser = await getCurrentUser()
+    if (!zitadelUser || zitadelUser.expired) return
+
+    const sub = zitadelUser.profile.sub
+    if (!sub) return
+
+    try {
+      const appUser = await loadAppSession(sub)
+      if (!appUser) return
+
+      if (appUser.userStatus === 'BLOCKED' || appUser.userStatus === 'DELETED') {
+        await router.replace('/blocked')
+        return
+      }
+
+      if (appUser.userStatus === 'PENDING_ONBOARDING') {
+        await router.replace('/onboarding')
+        return
+      }
+
+      await router.replace(getDefaultRouteForSession(appUser.userType, roles.value))
+    } catch (err: any) {
+      if (err?.code === 'USER_NOT_FOUND' || err?.status === 404) {
+        await router.replace('/onboarding')
+      }
+    }
+  } catch {
+    // Keep the public landing available if auth state cannot be read.
+  }
+})
 </script>

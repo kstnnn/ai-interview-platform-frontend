@@ -29,6 +29,10 @@
               <p class="mt-1 text-sm text-muted-foreground">{{ t('interview.voiceDesc') }}</p>
             </div>
             <div class="flex gap-3">
+              <BaseButton variant="outline" size="sm" @click="toggleAutoSpeak">
+                <component :is="autoSpeakQuestions ? Volume2 : VolumeX" class="h-4 w-4" />
+                {{ autoSpeakQuestions ? t('interview.autoSpeakOn') : t('interview.autoSpeakOff') }}
+              </BaseButton>
               <BaseButton variant="outline" size="sm" @click="toggleMute">
                 <component :is="isMuted ? VolumeX : Volume2" class="h-4 w-4" />
                 {{ isMuted ? t('interview.unmute') : t('interview.mute') }}
@@ -189,6 +193,7 @@ const interviewLanguage = computed(() => {
   if (lang === 'Russian' || lang === 'English') return lang
   return locale.value === 'ru' ? 'Russian' : 'English'
 })
+const speechLocale = computed(() => (interviewLanguage.value === 'Russian' ? 'ru-RU' : 'en-US'))
 
 const {
   isConnected,
@@ -224,10 +229,11 @@ const {
   resetTranscript,
   speak,
   cancelSpeech,
-} = useVoiceInterview()
+} = useVoiceInterview(speechLocale)
 
 const messagesContainerRef = ref<HTMLElement | null>(null)
 const isMuted = ref(false)
+const autoSpeakQuestions = ref(true)
 const secondsElapsed = ref(0)
 const timerId = ref<number | null>(null)
 const textInput = ref('')
@@ -304,6 +310,10 @@ function toggleMute() {
   isMuted.value = !isMuted.value
 }
 
+function toggleAutoSpeak() {
+  autoSpeakQuestions.value = !autoSpeakQuestions.value
+}
+
 function leaveInterview() {
   sendLeave()
   disconnect()
@@ -333,6 +343,15 @@ watch(status, (newStatus) => {
     }
   }
 })
+
+watch(
+  () => currentQuestion.value?.text,
+  (questionText) => {
+    if (questionText && autoSpeakQuestions.value) {
+      speakText(questionText)
+    }
+  },
+)
 
 onMounted(async () => {
   const token = await getAccessToken()

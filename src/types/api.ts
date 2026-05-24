@@ -1,6 +1,6 @@
 export type UserType = 'PERSONAL' | 'BUSINESS'
-export type UserStatus = 'ACTIVE' | 'DISABLED'
-export type UserRole = 'CANDIDATE' | 'MANAGER'
+export type UserStatus = 'ACTIVE' | 'PENDING_ONBOARDING' | 'BLOCKED' | 'DELETED' | 'DISABLED'
+export type UserRole = 'CANDIDATE' | 'MANAGER' | 'ADMIN'
 
 export type CreateUserRequest = {
   providerUserId: string
@@ -8,7 +8,7 @@ export type CreateUserRequest = {
   userType: UserType
   firstName: string
   lastName?: string | null
-  roles: UserRole[]
+  roles?: UserRole[]
 }
 
 export type UserResponse = {
@@ -20,6 +20,77 @@ export type UserResponse = {
   userType: UserType
   userStatus: UserStatus
   createdAt: string
+}
+
+export type AuthUserResponse = {
+  id: string
+  userStatus: UserStatus
+  roles: UserRole[]
+}
+
+export type PageResponse<T> = {
+  content: T[]
+  totalElements: number
+  totalPages: number
+  size: number
+  number: number
+}
+
+export type AdminUserResponse = UserResponse & {
+  roles: UserRole[]
+}
+
+export type AdminUserQuery = {
+  search?: string
+  userType?: UserType | ''
+  userStatus?: UserStatus | ''
+  role?: UserRole | ''
+  page?: number
+  size?: number
+  sort?: string
+}
+
+export type QuestionDifficulty = 'EASY' | 'MEDIUM' | 'HARD' | string
+
+export type AdminQuestionTechnology = {
+  id: number
+  key: string
+  displayName: string
+}
+
+export type AdminQuestionResponse = {
+  id: string
+  externalId: string
+  technology: AdminQuestionTechnology
+  topic: string
+  subtopic: string | null
+  difficulty: QuestionDifficulty
+  questionText: string
+  expectedAnswer: string
+  active: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export type AdminQuestionRequest = {
+  externalId?: string | null
+  technologyKey: string
+  topic: string
+  subtopic?: string | null
+  difficulty: QuestionDifficulty
+  questionText: string
+  expectedAnswer: string
+  active: boolean
+}
+
+export type AdminQuestionQuery = {
+  search?: string
+  technologyKey?: string
+  difficulty?: string
+  active?: boolean | ''
+  page?: number
+  size?: number
+  sort?: string
 }
 
 export type InterviewLevel = 'JUNIOR' | 'MIDDLE' | 'SENIOR'

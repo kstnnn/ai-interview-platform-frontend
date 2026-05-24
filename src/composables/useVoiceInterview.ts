@@ -1,4 +1,4 @@
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, toValue, watch, type MaybeRefOrGetter } from 'vue'
 
 interface SpeechRecognitionAlternative {
   transcript: string
@@ -43,7 +43,7 @@ declare global {
   }
 }
 
-export function useVoiceInterview() {
+export function useVoiceInterview(speechLocale: MaybeRefOrGetter<string> = 'en-US') {
   const transcript = ref('')
   const interimTranscript = ref('')
   const isListening = ref(false)
@@ -72,7 +72,7 @@ export function useVoiceInterview() {
     const instance = new Ctor()
     instance.continuous = true
     instance.interimResults = true
-    instance.lang = 'en-US'
+    instance.lang = toValue(speechLocale)
 
     instance.onresult = (event: SpeechRecognitionEventLike) => {
       let finalText = ''
@@ -142,6 +142,12 @@ export function useVoiceInterview() {
 
     window.speechSynthesis.cancel()
     const utterance = new SpeechSynthesisUtterance(text)
+    const locale = toValue(speechLocale)
+    utterance.lang = locale
+    const voice = window.speechSynthesis.getVoices().find((candidate) => candidate.lang.toLowerCase().startsWith(locale.toLowerCase().slice(0, 2)))
+    if (voice) {
+      utterance.voice = voice
+    }
     utterance.rate = 1
     utterance.pitch = 1
     utterance.onstart = () => {
@@ -169,6 +175,15 @@ export function useVoiceInterview() {
     stopListening()
     cancelSpeech()
   })
+
+  watch(
+    () => toValue(speechLocale),
+    (nextLocale) => {
+      if (recognition.value) {
+        recognition.value.lang = nextLocale
+      }
+    },
+  )
 
   return {
     transcript,

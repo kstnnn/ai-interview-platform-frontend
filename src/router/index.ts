@@ -1,12 +1,13 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { getCurrentUser, isZitadelConfigured } from '@/auth/zitadel'
-import { getDefaultWorkspaceRoute, loadAppSession } from '@/composables/useAppSession'
-import type { UserType } from '@/types/api'
+import { getDefaultRouteForSession, getDefaultWorkspaceRoute, loadAppSession, useAppSession } from '@/composables/useAppSession'
+import type { UserRole, UserType } from '@/types/api'
 
 declare module 'vue-router' {
   interface RouteMeta {
     requiresAuth?: boolean
     requiresUserType?: UserType
+    requiresRole?: UserRole
   }
 }
 
@@ -34,6 +35,11 @@ const router = createRouter({
       component: () => import('@/views/OnboardingView.vue'),
     },
     {
+      path: '/blocked',
+      name: 'blocked',
+      component: () => import('@/views/BlockedAccountView.vue'),
+    },
+    {
       path: '/auth/callback',
       name: 'auth-callback',
       component: () => import('@/views/AuthCallbackView.vue'),
@@ -47,6 +53,23 @@ const router = createRouter({
       path: '/auth/logout/callback',
       name: 'auth-logout-callback',
       component: () => import('@/views/LogoutCallbackView.vue'),
+    },
+    {
+      path: '/admin',
+      redirect: '/admin/users',
+      meta: { requiresAuth: true, requiresRole: 'ADMIN' },
+    },
+    {
+      path: '/admin/users',
+      name: 'admin-users',
+      component: () => import('@/views/AdminUsersView.vue'),
+      meta: { requiresAuth: true, requiresRole: 'ADMIN' },
+    },
+    {
+      path: '/admin/questions',
+      name: 'admin-questions',
+      component: () => import('@/views/AdminQuestionsView.vue'),
+      meta: { requiresAuth: true, requiresRole: 'ADMIN' },
     },
     {
       path: '/user',
@@ -161,6 +184,16 @@ router.beforeEach(async (to) => {
     const appUser = await loadAppSession(sub)
     if (!appUser) {
       return { name: 'onboarding' }
+    }
+    if (appUser.userStatus === 'BLOCKED' || appUser.userStatus === 'DELETED') {
+      return { name: 'blocked' }
+    }
+    if (appUser.userStatus === 'PENDING_ONBOARDING') {
+      return { name: 'onboarding' }
+    }
+    const { roles } = useAppSession()
+    if (to.meta.requiresRole && !roles.value.includes(to.meta.requiresRole)) {
+      return getDefaultRouteForSession(appUser.userType, roles.value)
     }
     if (to.meta.requiresUserType && appUser.userType !== to.meta.requiresUserType) {
       return getDefaultWorkspaceRoute(appUser.userType)

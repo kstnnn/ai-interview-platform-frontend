@@ -1,5 +1,5 @@
 import { ofetch, type FetchOptions } from 'ofetch'
-import { getAccessToken } from '@/auth/zitadel'
+import { getAccessToken, getCurrentUser } from '@/auth/zitadel'
 
 export class ApiError extends Error {
   constructor(
@@ -31,6 +31,7 @@ function createApiClient(baseURL: string, requireAuth: boolean) {
       options.headers = { ...existingHeaders, Authorization: `Bearer ${accessToken}` }
     },
     onResponseError({ response }) {
+      void redirectBlockedUserOnForbidden(response.status)
       const data = response._data as { message?: unknown; error?: unknown } | undefined
       const message = typeof data?.message === 'string'
         ? data.message
@@ -41,6 +42,31 @@ function createApiClient(baseURL: string, requireAuth: boolean) {
       throw new ApiError(message, response.status, data)
     },
   })
+}
+
+async function redirectBlockedUserOnForbidden(status: number) {
+  if (status !== 403 || window.location.pathname === '/blocked') {
+    return
+  }
+
+  try {
+    const [user, token] = await Promise.all([getCurrentUser(), getAccessToken()])
+    const sub = user?.profile.sub
+    const accessToken = typeof token === 'string' ? token.trim() : ''
+    if (!sub || !accessToken) return
+
+    const response = await fetch(`${userApiBaseUrl}/users/auth/by-provider-id/${encodeURIComponent(sub)}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    if (!response.ok) return
+
+    const authUser = await response.json() as { userStatus?: string }
+    if (authUser.userStatus === 'BLOCKED' || authUser.userStatus === 'DELETED') {
+      window.location.assign('/blocked')
+    }
+  } catch {
+    // Keep the original API error behavior if status refresh fails.
+  }
 }
 
 const userApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api/v1'

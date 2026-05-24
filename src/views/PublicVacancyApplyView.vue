@@ -158,6 +158,10 @@ async function submitApplication() {
       coverLetter: coverLetter.value.trim() || null,
       candidateContacts,
     })
+    if (!application.interviewSessionId) {
+      submitError.value = t('vacancyApply.interviewNotCreated')
+      return
+    }
     await router.push(`/candidate/interview/${application.interviewSessionId}`)
   } catch (err: any) {
     submitError.value = err?.status === 409

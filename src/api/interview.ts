@@ -1,5 +1,5 @@
-import { interviewRequest } from '@/api/client'
-import type { CreateInterviewRequest, CreateInterviewResponse, InterviewResult, InterviewSessionDetails, InterviewSessionSummary, LearningRoadmapResponse } from '@/types/api'
+import { interviewRequest, publicInterviewRequest } from '@/api/client'
+import type { CreateInterviewRequest, CreateInterviewResponse, InterviewResult, InterviewSessionDetails, InterviewSessionSummary, LearningRoadmapResponse, TechnologyGroupResponse, TechnologyResponse } from '@/types/api'
 
 export function createInterview(data: CreateInterviewRequest) {
   return interviewRequest<CreateInterviewResponse>('/interviews', {
@@ -32,4 +32,12 @@ export function getUserLearningRoadmap(language: 'en' | 'ru') {
 
 export function getMyInterviews() {
   return interviewRequest<InterviewSessionSummary[]>('/interviews/my')
+}
+
+export function getTechnologies() {
+  return publicInterviewRequest<TechnologyResponse[]>('/technologies')
+}
+
+export function getGroupedTechnologies() {
+  return publicInterviewRequest<TechnologyGroupResponse[]>('/technologies/grouped')
 }

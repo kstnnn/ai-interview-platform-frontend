@@ -70,18 +70,24 @@
 
               <label class="space-y-2 block">
                 <span class="block text-sm font-semibold text-foreground">{{ t('vacancyBuilder.stack') }}</span>
-                <div class="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                  <button
-                    v-for="tech in AVAILABLE_TECHNOLOGIES"
-                    :key="tech"
-                    type="button"
-                    class="rounded-full border px-3 py-2 text-xs font-semibold transition"
-                    :class="form.technologyKeys.includes(tech) ? 'border-primary/30 bg-primary/10 text-primary' : 'border-border bg-muted/40 text-muted-foreground hover:border-primary/30'"
-                    @click="toggleTechnology(tech)"
-                  >
-                    {{ formatTechName(tech) }}
-                  </button>
+                <div class="space-y-4">
+                  <div v-for="group in technologyGroups" :key="group.groupKey">
+                    <p class="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{{ group.groupName }}</p>
+                    <div class="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                      <button
+                        v-for="tech in group.items"
+                        :key="tech.key"
+                        type="button"
+                        class="rounded-full border px-3 py-2 text-xs font-semibold transition"
+                        :class="form.technologyKeys.includes(tech.key) ? 'border-primary/30 bg-primary/10 text-primary' : 'border-border bg-muted/40 text-muted-foreground hover:border-primary/30'"
+                        @click="toggleTechnology(tech.key)"
+                      >
+                        {{ tech.displayName }}
+                      </button>
+                    </div>
+                  </div>
                 </div>
+                <p v-if="technologiesError" class="mt-2 text-xs text-warning">{{ technologiesError }}</p>
               </label>
 
               <div class="rounded-[1.5rem] border border-border/60 p-5">
@@ -135,12 +141,12 @@ import AppFooter from '@/components/AppFooter.vue'
 import AppHeader from '@/components/AppHeader.vue'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseCard from '@/components/BaseCard.vue'
+import { getGroupedTechnologies } from '@/api/interview'
 import { createVacancy, getMyOrganizations } from '@/api/organization'
 import { useI18n } from '@/i18n'
-import type { EmploymentType, OrganizationResponse, VacancyLevel, WorkFormat } from '@/types/api'
+import type { EmploymentType, OrganizationResponse, TechnologyGroupResponse, VacancyLevel, WorkFormat } from '@/types/api'
+import { FALLBACK_TECHNOLOGY_GROUPS } from '@/utils/technologies'
 import { employmentTypeLabel, vacancyLevelLabel, workFormatLabel } from '@/utils/vacancy-labels'
-
-const AVAILABLE_TECHNOLOGIES = ['java', 'spring', 'python', 'django', 'fastapi', 'postgresql', 'hibernate', 'kafka', 'redis', 'system_design', 'testing', 'devops'] as const
 
 const router = useRouter()
 const { t } = useI18n()
@@ -148,6 +154,8 @@ const organizations = ref<OrganizationResponse[]>([])
 const isLoading = ref(true)
 const isCreating = ref(false)
 const apiError = ref('')
+const technologyGroups = ref<TechnologyGroupResponse[]>(FALLBACK_TECHNOLOGY_GROUPS)
+const technologiesError = ref('')
 const organization = computed(() => organizations.value[0] ?? null)
 
 const form = reactive({
@@ -168,10 +176,6 @@ function toggleTechnology(tech: string) {
   const idx = form.technologyKeys.indexOf(tech)
   if (idx === -1) form.technologyKeys.push(tech)
   else form.technologyKeys.splice(idx, 1)
-}
-
-function formatTechName(tech: string) {
-  return tech.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 async function submitVacancy() {
@@ -202,7 +206,16 @@ async function submitVacancy() {
 
 onMounted(async () => {
   try {
-    organizations.value = await getMyOrganizations()
+    const [organizationsResponse, technologiesResponse] = await Promise.allSettled([getMyOrganizations(), getGroupedTechnologies()])
+    if (organizationsResponse.status === 'fulfilled') {
+      organizations.value = organizationsResponse.value
+    }
+    if (technologiesResponse.status === 'fulfilled' && technologiesResponse.value.length) {
+      technologyGroups.value = technologiesResponse.value
+    } else {
+      technologyGroups.value = FALLBACK_TECHNOLOGY_GROUPS
+      technologiesError.value = t('technologies.loadFailed')
+    }
   } finally {
     isLoading.value = false
   }

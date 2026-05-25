@@ -71,9 +71,11 @@ async function redirectBlockedUserOnForbidden(status: number) {
 
 const userApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api/v1'
 const organizationApiBaseUrl = import.meta.env.VITE_ORGANIZATION_API_BASE_URL ?? 'http://localhost:8082/api/v1'
+const interviewApiBaseUrl = import.meta.env.VITE_INTERVIEW_API_BASE_URL ?? 'http://localhost:8081/api/v1'
 const userApiClient = createApiClient(userApiBaseUrl, true)
 const publicUserApiClient = createApiClient(userApiBaseUrl, false)
-const interviewApiClient = createApiClient(import.meta.env.VITE_INTERVIEW_API_BASE_URL ?? 'http://localhost:8081/api/v1', true)
+const interviewApiClient = createApiClient(interviewApiBaseUrl, true)
+const publicInterviewApiClient = createApiClient(interviewApiBaseUrl, false)
 const organizationApiClient = createApiClient(organizationApiBaseUrl, true)
 const publicOrganizationApiClient = createApiClient(organizationApiBaseUrl, false)
 
@@ -87,6 +89,10 @@ export async function publicApiRequest<T>(path: string, options?: FetchOptions<'
 
 export async function interviewRequest<T>(path: string, options?: FetchOptions<'json'>) {
   return interviewApiClient<T>(path, options)
+}
+
+export async function publicInterviewRequest<T>(path: string, options?: FetchOptions<'json'>) {
+  return publicInterviewApiClient<T>(path, options)
 }
 
 export async function organizationRequest<T>(path: string, options?: FetchOptions<'json'>) {

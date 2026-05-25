@@ -53,3 +53,15 @@ export function activateAdminQuestion(questionId: string) {
 export function deactivateAdminQuestion(questionId: string) {
   return interviewRequest<AdminQuestionResponse>(`/admin/questions/${questionId}/deactivate`, { method: 'POST' })
 }
+
+export function syncQuestionVectorStore() {
+  return interviewRequest<void>('/questions/sync/vector', { method: 'POST' })
+}
+
+export function importBundledQuestions() {
+  return interviewRequest<void>('/questions/import', { method: 'POST' })
+}
+
+export function deleteQuestionVectorCollection() {
+  return interviewRequest<void>('/questions/delete', { method: 'POST' })
+}

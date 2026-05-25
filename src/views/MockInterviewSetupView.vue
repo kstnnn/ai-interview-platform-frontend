@@ -19,20 +19,26 @@
             <form class="mt-8 space-y-6" @submit.prevent="createInterview">
               <label class="space-y-2 block">
                 <span class="block text-sm font-semibold text-foreground">{{ t('mockInterview.technologies') }}</span>
-                <div class="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                  <button
-                    v-for="tech in AVAILABLE_TECHNOLOGIES"
-                    :key="tech"
-                    type="button"
-                    class="rounded-full border px-3 py-2 text-xs font-semibold transition"
-                    :class="form.technologies.includes(tech)
-                      ? 'border-primary/30 bg-primary/10 text-primary'
-                      : 'border-border bg-muted/40 text-muted-foreground hover:border-primary/30'"
-                    @click="toggleTechnology(tech)"
-                  >
-                    {{ formatTechName(tech) }}
-                  </button>
+                <div class="space-y-4">
+                  <div v-for="group in technologyGroups" :key="group.groupKey">
+                    <p class="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{{ group.groupName }}</p>
+                    <div class="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                      <button
+                        v-for="tech in group.items"
+                        :key="tech.key"
+                        type="button"
+                        class="rounded-full border px-3 py-2 text-xs font-semibold transition"
+                        :class="form.technologies.includes(tech.key)
+                          ? 'border-primary/30 bg-primary/10 text-primary'
+                          : 'border-border bg-muted/40 text-muted-foreground hover:border-primary/30'"
+                        @click="toggleTechnology(tech.key)"
+                      >
+                        {{ tech.displayName }}
+                      </button>
+                    </div>
+                  </div>
                 </div>
+                <p v-if="technologiesError" class="mt-2 text-xs text-warning">{{ technologiesError }}</p>
               </label>
 
               <div class="grid gap-5 sm:grid-cols-3">
@@ -94,23 +100,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-vue-next'
 import AppFooter from '@/components/AppFooter.vue'
 import AppHeader from '@/components/AppHeader.vue'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseCard from '@/components/BaseCard.vue'
-import { createInterview as apiCreateInterview } from '@/api/interview'
+import { createInterview as apiCreateInterview, getGroupedTechnologies } from '@/api/interview'
 import { useAppSession } from '@/composables/useAppSession'
 import { useI18n } from '@/i18n'
-import type { InterviewLevel } from '@/types/api'
-
-const AVAILABLE_TECHNOLOGIES = [
-  'java', 'spring', 'python', 'django', 'fastapi',
-  'postgresql', 'hibernate', 'kafka', 'redis',
-  'system_design', 'testing', 'devops',
-] as const
+import type { InterviewLevel, TechnologyGroupResponse } from '@/types/api'
+import { FALLBACK_TECHNOLOGY_GROUPS } from '@/utils/technologies'
 
 const router = useRouter()
 const { locale, t } = useI18n()
@@ -118,6 +119,8 @@ const { userId } = useAppSession()
 
 const isCreating = ref(false)
 const apiError = ref('')
+const technologyGroups = ref<TechnologyGroupResponse[]>(FALLBACK_TECHNOLOGY_GROUPS)
+const technologiesError = ref('')
 
 const form = reactive({
   technologies: [] as string[],
@@ -135,10 +138,6 @@ function toggleTechnology(tech: string) {
   } else {
     form.technologies.splice(idx, 1)
   }
-}
-
-function formatTechName(tech: string) {
-  return tech.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 async function createInterview() {
@@ -167,4 +166,14 @@ async function createInterview() {
     isCreating.value = false
   }
 }
+
+onMounted(async () => {
+  try {
+    const response = await getGroupedTechnologies()
+    technologyGroups.value = response.length ? response : FALLBACK_TECHNOLOGY_GROUPS
+  } catch {
+    technologyGroups.value = FALLBACK_TECHNOLOGY_GROUPS
+    technologiesError.value = t('technologies.loadFailed')
+  }
+})
 </script>

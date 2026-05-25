@@ -9,19 +9,39 @@
         </div>
 
         <div class="mt-6 grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
-          <BaseCard class="p-6">
-            <h2 class="text-xl font-bold text-foreground">{{ editingId ? t('admin.questions.edit') : t('admin.questions.create') }}</h2>
-            <form class="mt-5 space-y-4" @submit.prevent="submitQuestion">
-              <input v-if="!editingId" v-model.trim="form.externalId" class="h-11 w-full rounded-full border border-border bg-input px-4 text-sm outline-none focus:border-primary" :placeholder="t('admin.questions.externalId')" />
-              <div class="grid gap-3 sm:grid-cols-2"><input v-model.trim="form.technologyKey" required class="h-11 rounded-full border border-border bg-input px-4 text-sm outline-none focus:border-primary" :placeholder="t('admin.questions.technologyKey')" /><select v-model="form.difficulty" class="h-11 rounded-full border border-border bg-input px-4 text-sm outline-none focus:border-primary"><option value="EASY">EASY</option><option value="MEDIUM">MEDIUM</option><option value="HARD">HARD</option></select></div>
-              <div class="grid gap-3 sm:grid-cols-2"><input v-model.trim="form.topic" required class="h-11 rounded-full border border-border bg-input px-4 text-sm outline-none focus:border-primary" :placeholder="t('admin.questions.topic')" /><input v-model.trim="form.subtopic" class="h-11 rounded-full border border-border bg-input px-4 text-sm outline-none focus:border-primary" :placeholder="t('admin.questions.subtopic')" /></div>
-              <textarea v-model.trim="form.questionText" required rows="4" class="w-full rounded-[1.25rem] border border-border bg-input px-4 py-3 text-sm outline-none focus:border-primary" :placeholder="t('admin.questions.questionText')"></textarea>
-              <textarea v-model.trim="form.expectedAnswer" required rows="4" class="w-full rounded-[1.25rem] border border-border bg-input px-4 py-3 text-sm outline-none focus:border-primary" :placeholder="t('admin.questions.expectedAnswer')"></textarea>
-              <label class="flex items-center gap-2 text-sm font-semibold"><input v-model="form.active" type="checkbox" /> {{ t('admin.questions.active') }}</label>
-              <p v-if="formError" class="text-sm text-destructive">{{ formError }}</p>
-              <div class="flex gap-2"><BaseButton :disabled="isSaving">{{ isSaving ? t('common.saving') : t('admin.questions.save') }}</BaseButton><BaseButton v-if="editingId" type="button" variant="outline" @click="resetForm">{{ t('vacancyQuestions.cancel') }}</BaseButton></div>
-            </form>
-          </BaseCard>
+          <div class="space-y-6">
+            <BaseCard class="p-6">
+              <h2 class="text-xl font-bold text-foreground">{{ t('admin.questions.maintenanceTitle') }}</h2>
+              <p class="mt-2 text-sm text-muted-foreground">{{ t('admin.questions.maintenanceDesc') }}</p>
+              <div class="mt-5 grid gap-3">
+                <BaseButton :disabled="Boolean(maintenanceAction)" @click="runMaintenance('sync')">
+                  {{ maintenanceAction === 'sync' ? t('admin.questions.syncingVector') : t('admin.questions.syncVector') }}
+                </BaseButton>
+                <BaseButton variant="outline" :disabled="Boolean(maintenanceAction)" @click="runMaintenance('import')">
+                  {{ maintenanceAction === 'import' ? t('admin.questions.importingBundled') : t('admin.questions.importBundled') }}
+                </BaseButton>
+                <BaseButton variant="ghost" :disabled="Boolean(maintenanceAction)" @click="runMaintenance('delete')">
+                  {{ maintenanceAction === 'delete' ? t('admin.questions.deletingVector') : t('admin.questions.deleteVector') }}
+                </BaseButton>
+              </div>
+              <p v-if="maintenanceMessage" class="mt-4 rounded-[1.25rem] bg-success/10 p-3 text-sm text-success">{{ maintenanceMessage }}</p>
+              <p v-if="maintenanceError" class="mt-4 rounded-[1.25rem] bg-destructive/10 p-3 text-sm text-destructive">{{ maintenanceError }}</p>
+            </BaseCard>
+
+            <BaseCard class="p-6">
+              <h2 class="text-xl font-bold text-foreground">{{ editingId ? t('admin.questions.edit') : t('admin.questions.create') }}</h2>
+              <form class="mt-5 space-y-4" @submit.prevent="submitQuestion">
+                <input v-if="!editingId" v-model.trim="form.externalId" class="h-11 w-full rounded-full border border-border bg-input px-4 text-sm outline-none focus:border-primary" :placeholder="t('admin.questions.externalId')" />
+                <div class="grid gap-3 sm:grid-cols-2"><input v-model.trim="form.technologyKey" required class="h-11 rounded-full border border-border bg-input px-4 text-sm outline-none focus:border-primary" :placeholder="t('admin.questions.technologyKey')" /><select v-model="form.difficulty" class="h-11 rounded-full border border-border bg-input px-4 text-sm outline-none focus:border-primary"><option value="EASY">EASY</option><option value="MEDIUM">MEDIUM</option><option value="HARD">HARD</option></select></div>
+                <div class="grid gap-3 sm:grid-cols-2"><input v-model.trim="form.topic" required class="h-11 rounded-full border border-border bg-input px-4 text-sm outline-none focus:border-primary" :placeholder="t('admin.questions.topic')" /><input v-model.trim="form.subtopic" class="h-11 rounded-full border border-border bg-input px-4 text-sm outline-none focus:border-primary" :placeholder="t('admin.questions.subtopic')" /></div>
+                <textarea v-model.trim="form.questionText" required rows="4" class="w-full rounded-[1.25rem] border border-border bg-input px-4 py-3 text-sm outline-none focus:border-primary" :placeholder="t('admin.questions.questionText')"></textarea>
+                <textarea v-model.trim="form.expectedAnswer" required rows="4" class="w-full rounded-[1.25rem] border border-border bg-input px-4 py-3 text-sm outline-none focus:border-primary" :placeholder="t('admin.questions.expectedAnswer')"></textarea>
+                <label class="flex items-center gap-2 text-sm font-semibold"><input v-model="form.active" type="checkbox" /> {{ t('admin.questions.active') }}</label>
+                <p v-if="formError" class="text-sm text-destructive">{{ formError }}</p>
+                <div class="flex gap-2"><BaseButton :disabled="isSaving">{{ isSaving ? t('common.saving') : t('admin.questions.save') }}</BaseButton><BaseButton v-if="editingId" type="button" variant="outline" @click="resetForm">{{ t('vacancyQuestions.cancel') }}</BaseButton></div>
+              </form>
+            </BaseCard>
+          </div>
 
           <div>
             <BaseCard class="p-5">
@@ -60,7 +80,8 @@ import AppFooter from '@/components/AppFooter.vue'
 import AppHeader from '@/components/AppHeader.vue'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseCard from '@/components/BaseCard.vue'
-import { activateAdminQuestion, createAdminQuestion, deactivateAdminQuestion, getAdminQuestions, updateAdminQuestion } from '@/api/admin'
+import { activateAdminQuestion, createAdminQuestion, deactivateAdminQuestion, deleteQuestionVectorCollection, getAdminQuestions, importBundledQuestions, syncQuestionVectorStore, updateAdminQuestion } from '@/api/admin'
+import { ApiError } from '@/api/client'
 import { useI18n } from '@/i18n'
 import type { AdminQuestionResponse, PageResponse } from '@/types/api'
 
@@ -70,6 +91,9 @@ const isLoading = ref(false)
 const isSaving = ref(false)
 const error = ref('')
 const formError = ref('')
+const maintenanceAction = ref<'sync' | 'import' | 'delete' | ''>('')
+const maintenanceMessage = ref('')
+const maintenanceError = ref('')
 const editingId = ref('')
 const filters = reactive({ search: '', technologyKey: '', difficulty: '', active: '' as boolean | '', page: 0, size: 10, sort: 'createdAt,desc' })
 const page = reactive({ totalElements: 0, totalPages: 0, number: 0, size: 10 })
@@ -104,6 +128,33 @@ async function submitQuestion() {
     formError.value = err instanceof Error ? err.message : t('admin.questions.saveFailed')
   } finally {
     isSaving.value = false
+  }
+}
+async function runMaintenance(action: 'sync' | 'import' | 'delete') {
+  if (action === 'delete' && !window.confirm(t('admin.questions.deleteVectorConfirm'))) return
+  maintenanceAction.value = action
+  maintenanceMessage.value = ''
+  maintenanceError.value = ''
+  try {
+    if (action === 'sync') {
+      await syncQuestionVectorStore()
+      maintenanceMessage.value = t('admin.questions.vectorSynced')
+    } else if (action === 'import') {
+      await importBundledQuestions()
+      maintenanceMessage.value = t('admin.questions.importedBundled')
+      await loadQuestions()
+    } else {
+      await deleteQuestionVectorCollection()
+      maintenanceMessage.value = t('admin.questions.vectorDeleted')
+    }
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 403) {
+      maintenanceError.value = t('admin.questions.adminRequired')
+    } else {
+      maintenanceError.value = err instanceof Error ? err.message : t('admin.questions.maintenanceFailed')
+    }
+  } finally {
+    maintenanceAction.value = ''
   }
 }
 function editQuestion(question: AdminQuestionResponse) { editingId.value = question.id; form.externalId = question.externalId; form.technologyKey = question.technology.key; form.topic = question.topic; form.subtopic = question.subtopic ?? ''; form.difficulty = question.difficulty; form.questionText = question.questionText; form.expectedAnswer = question.expectedAnswer; form.active = question.active }

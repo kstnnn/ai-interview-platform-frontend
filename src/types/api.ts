@@ -111,6 +111,16 @@ export type TechnologyGroupResponse = {
   items: TechnologyResponse[]
 }
 
+export type VoiceTranscriptionResponse = {
+  text: string
+  language: LocaleString
+}
+
+export type VoiceSynthesisRequest = {
+  text: string
+  speaker: string
+}
+
 export type CreateInterviewRequest = {
   userId: string
   minQuestions: number

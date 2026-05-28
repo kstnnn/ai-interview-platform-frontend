@@ -79,26 +79,26 @@ const publicInterviewApiClient = createApiClient(interviewApiBaseUrl, false)
 const organizationApiClient = createApiClient(organizationApiBaseUrl, true)
 const publicOrganizationApiClient = createApiClient(organizationApiBaseUrl, false)
 
-export async function apiRequest<T>(path: string, options?: FetchOptions<'json'>) {
-  return userApiClient<T>(path, options)
+export async function apiRequest<T>(path: string, options?: FetchOptions) {
+  return userApiClient<T>(path, options as any)
 }
 
-export async function publicApiRequest<T>(path: string, options?: FetchOptions<'json'>) {
-  return publicUserApiClient<T>(path, options)
+export async function publicApiRequest<T>(path: string, options?: FetchOptions) {
+  return publicUserApiClient<T>(path, options as any)
 }
 
-export async function interviewRequest<T>(path: string, options?: FetchOptions<'json'>) {
-  return interviewApiClient<T>(path, options)
+export async function interviewRequest<T>(path: string, options?: FetchOptions) {
+  return interviewApiClient<T>(path, options as any)
 }
 
-export async function publicInterviewRequest<T>(path: string, options?: FetchOptions<'json'>) {
-  return publicInterviewApiClient<T>(path, options)
+export async function publicInterviewRequest<T>(path: string, options?: FetchOptions) {
+  return publicInterviewApiClient<T>(path, options as any)
 }
 
-export async function organizationRequest<T>(path: string, options?: FetchOptions<'json'>) {
-  return organizationApiClient<T>(path, options)
+export async function organizationRequest<T>(path: string, options?: FetchOptions) {
+  return organizationApiClient<T>(path, options as any)
 }
 
-export async function publicOrganizationRequest<T>(path: string, options?: FetchOptions<'json'>) {
-  return publicOrganizationApiClient<T>(path, options)
+export async function publicOrganizationRequest<T>(path: string, options?: FetchOptions) {
+  return publicOrganizationApiClient<T>(path, options as any)
 }

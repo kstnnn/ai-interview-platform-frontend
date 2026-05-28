@@ -31,6 +31,12 @@
                 <span class="rounded-full bg-muted px-3 py-1">{{ applicationStatusLabel(report.status) }}</span>
                 <span v-if="report.completedAt" class="rounded-full bg-muted px-3 py-1">{{ t('applications.completedAt') }}: {{ formatDate(report.completedAt) }}</span>
               </div>
+              <div class="mt-6 flex flex-wrap items-center gap-3">
+                <BaseButton variant="outline" :disabled="isDownloadingPdf" @click="downloadReportPdf">
+                  {{ isDownloadingPdf ? t('employerReport.downloadingPdf') : t('employerReport.downloadPdf') }}
+                </BaseButton>
+                <p v-if="downloadError" class="text-sm text-destructive">{{ downloadError }}</p>
+              </div>
             </BaseCard>
 
             <BaseCard class="p-8">
@@ -154,7 +160,9 @@ import { RouterLink, useRoute } from 'vue-router'
 import { ArrowLeft } from 'lucide-vue-next'
 import AppFooter from '@/components/AppFooter.vue'
 import AppHeader from '@/components/AppHeader.vue'
+import BaseButton from '@/components/BaseButton.vue'
 import BaseCard from '@/components/BaseCard.vue'
+import { downloadAuthenticatedFile, organizationApiBaseUrl } from '@/api/download'
 import { getVacancyApplicationReport } from '@/api/organization'
 import { useI18n } from '@/i18n'
 import type { ApplicationRecommendation, CandidateContacts, EmployerApplicationReport } from '@/types/api'
@@ -167,7 +175,9 @@ const vacancyId = String(route.params.vacancyId ?? '')
 const applicationId = String(route.params.applicationId ?? '')
 const report = ref<EmployerApplicationReport | null>(null)
 const isLoading = ref(true)
+const isDownloadingPdf = ref(false)
 const error = ref('')
+const downloadError = ref('')
 
 const candidateName = computed(() => {
   const candidate = report.value?.candidate
@@ -184,6 +194,22 @@ onMounted(async () => {
     isLoading.value = false
   }
 })
+
+async function downloadReportPdf() {
+  isDownloadingPdf.value = true
+  downloadError.value = ''
+  const language = locale.value === 'ru' ? 'ru' : 'en'
+  try {
+    await downloadAuthenticatedFile(
+      `${organizationApiBaseUrl}/vacancies/${encodeURIComponent(vacancyId)}/applications/${encodeURIComponent(applicationId)}/report/export?language=${language}`,
+      `application-report-${applicationId}.pdf`,
+    )
+  } catch (err) {
+    downloadError.value = err instanceof Error ? err.message : t('common.downloadFailed')
+  } finally {
+    isDownloadingPdf.value = false
+  }
+}
 
 const topicLabels: Record<string, { en: string; ru: string }> = {
   language_basics: { en: 'Language Basics', ru: 'Основы языка' },

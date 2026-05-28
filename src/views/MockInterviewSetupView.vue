@@ -41,6 +41,10 @@
                 <p v-if="technologiesError" class="mt-2 text-xs text-warning">{{ technologiesError }}</p>
               </label>
 
+              <div v-if="validationErrors.length" class="rounded-[1.5rem] border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">
+                <p v-for="error in validationErrors" :key="error">{{ error }}</p>
+              </div>
+
               <div class="grid gap-5 sm:grid-cols-3">
                 <label class="space-y-2">
                   <span class="block text-sm font-semibold text-foreground">{{ t('mockInterview.level') }}</span>
@@ -66,7 +70,7 @@
                 {{ apiError }}
               </div>
 
-              <BaseButton size="lg" tag="button" :disabled="isCreating || form.technologies.length === 0">
+              <BaseButton size="lg" tag="button" :disabled="isCreating">
                 {{ isCreating ? t('mockInterview.creating') : t('mockInterview.startInterview') }}
                 <ArrowRight class="h-4 w-4" />
               </BaseButton>
@@ -121,6 +125,7 @@ const isCreating = ref(false)
 const apiError = ref('')
 const technologyGroups = ref<TechnologyGroupResponse[]>(FALLBACK_TECHNOLOGY_GROUPS)
 const technologiesError = ref('')
+const validationErrors = ref<string[]>([])
 
 const form = reactive({
   technologies: [] as string[],
@@ -138,10 +143,29 @@ function toggleTechnology(tech: string) {
   } else {
     form.technologies.splice(idx, 1)
   }
+  validationErrors.value = validationErrors.value.filter((error) => error !== t('validation.selectTechnology'))
+}
+
+function validateInterviewForm() {
+  const errors: string[] = []
+  if (form.technologies.length === 0) {
+    errors.push(t('validation.selectTechnology'))
+  }
+  if (!Number.isFinite(form.minQuestions) || form.minQuestions < 1 || form.minQuestions > 50) {
+    errors.push(t('validation.minQuestionsRange'))
+  }
+  if (!Number.isFinite(form.maxQuestions) || form.maxQuestions < 1 || form.maxQuestions > 50) {
+    errors.push(t('validation.maxQuestionsRange'))
+  }
+  if (Number.isFinite(form.minQuestions) && Number.isFinite(form.maxQuestions) && form.maxQuestions < form.minQuestions) {
+    errors.push(t('validation.maxQuestionsLessThanMin'))
+  }
+  validationErrors.value = errors
+  return errors.length === 0
 }
 
 async function createInterview() {
-  if (form.technologies.length === 0) return
+  if (!validateInterviewForm()) return
 
   apiError.value = ''
   isCreating.value = true

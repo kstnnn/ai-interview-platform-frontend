@@ -71,11 +71,10 @@
             </div>
           </div>
 
-          <div v-if="transcript || interimTranscript" class="flex justify-end gap-3">
+          <div v-if="isListening || isTranscribing" class="flex justify-end gap-3">
             <div
               class="max-w-[75%] rounded-organic bg-primary px-5 py-3 text-sm leading-relaxed text-primary-foreground shadow-soft">
-              {{ transcript }}
-              <span v-if="interimTranscript" class="opacity-70"> {{ interimTranscript }}</span>
+              {{ isTranscribing ? t('interview.transcribing') : t('interview.recording') }}
             </div>
             <div
               class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-organic bg-accent text-accent-foreground shadow-soft">
@@ -89,7 +88,11 @@
             class="mb-4 rounded-organic border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">
             {{ voiceError }}
           </div>
-          <div v-if="!speechRecognitionSupported || !speechSynthesisSupported"
+          <div v-if="answerValidationError"
+            class="mb-4 rounded-organic border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">
+            {{ answerValidationError }}
+          </div>
+          <div v-if="!speechRecognitionSupported"
             class="mb-4 rounded-organic border border-warning/20 bg-warning/10 p-4 text-sm text-foreground">
             {{ t('interview.voiceUnsupported') }}
           </div>
@@ -97,10 +100,25 @@
           <textarea
             v-model="textInput"
             :placeholder="t('interview.typeAnswer')"
-            :disabled="status === 'finished' || status === 'connected' || status === 'ready' || status === 'evaluating' || Boolean(rateLimitError)"
+            :disabled="status === 'finished' || status === 'connected' || status === 'ready' || status === 'evaluating' || isListening || isTranscribing || Boolean(rateLimitError)"
             rows="3"
             class="mb-4 w-full resize-none rounded-organic border border-border bg-input px-4 py-3 text-sm leading-relaxed outline-none transition focus:border-primary disabled:opacity-50"
           />
+
+          <div v-if="transcript" class="mb-4 rounded-organic border border-primary/20 bg-primary/5 p-4">
+            <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <p class="text-sm font-semibold text-foreground">{{ t('interview.editTranscript') }}</p>
+              <p v-if="transcriptionLanguage" class="text-xs text-muted-foreground">
+                {{ t('interview.transcriptLanguage').replace('{language}', transcriptionLanguage) }}
+              </p>
+            </div>
+            <textarea
+              v-model="transcript"
+              :disabled="status === 'finished' || status === 'evaluating' || Boolean(rateLimitError)"
+              rows="3"
+              class="w-full resize-none rounded-organic border border-border bg-input px-4 py-3 text-sm leading-relaxed outline-none transition focus:border-primary disabled:opacity-50"
+            />
+          </div>
 
           <div v-if="rateLimitError" class="mb-4 rounded-organic border border-warning/20 bg-warning/10 p-4 text-sm text-foreground">
             <p class="font-semibold">{{ rateLimitError.message }}</p>
@@ -117,11 +135,17 @@
               {{ t('interview.ready') }}
             </BaseButton>
 
-            <BaseButton v-if="speechRecognitionSupported" :disabled="status === 'finished' || status === 'connected' || status === 'ready' || status === 'evaluating' || Boolean(rateLimitError)" :variant="isListening ? 'primary' : 'outline'" size="icon" @click="toggleListening">
+            <BaseButton v-if="speechRecognitionSupported" :disabled="status === 'finished' || status === 'connected' || status === 'ready' || status === 'evaluating' || isTranscribing || Boolean(rateLimitError)" :variant="isListening ? 'primary' : 'outline'" @click="toggleListening">
               <component :is="isListening ? MicOff : Mic" class="h-5 w-5" />
+              {{ isListening ? t('interview.stopRecording') : t('interview.startRecording') }}
             </BaseButton>
 
-            <BaseButton :disabled="!canSubmitAnswer || status === 'finished'" @click="submitAnswer">
+            <BaseButton v-if="transcript && speechRecognitionSupported" variant="outline" :disabled="status === 'finished' || status === 'evaluating' || isListening || isTranscribing || Boolean(rateLimitError)" @click="rerecordAnswer">
+              <Mic class="h-4 w-4" />
+              {{ t('interview.rerecord') }}
+            </BaseButton>
+
+            <BaseButton :disabled="status === 'finished'" @click="submitAnswer">
               <Send class="h-4 w-4" />
               {{ t('interview.submitAnswer') }}
             </BaseButton>
@@ -219,17 +243,20 @@ const {
 
 const {
   transcript,
-  interimTranscript,
+  transcriptionLanguage,
   isListening,
+  isTranscribing,
   error: voiceError,
+  isTranscriptionTimeout,
+  canRetryTranscription,
   speechRecognitionSupported,
-  speechSynthesisSupported,
   startListening,
   stopListening,
   resetTranscript,
+  retryTranscription,
   speak,
   cancelSpeech,
-} = useVoiceInterview(speechLocale)
+} = useVoiceInterview(sessionId, speechLocale)
 
 const messagesContainerRef = ref<HTMLElement | null>(null)
 const isMuted = ref(false)
@@ -237,6 +264,8 @@ const autoSpeakQuestions = ref(true)
 const secondsElapsed = ref(0)
 const timerId = ref<number | null>(null)
 const textInput = ref('')
+const hasSpokenGreeting = ref(false)
+const answerValidationError = ref('')
 let hasRequestedStart = false
 
 function stripThinkingTags(text: string) {
@@ -252,10 +281,14 @@ const displayMessages = computed(() =>
 
 const canSubmitAnswer = computed(() => {
   const hasContent = transcript.value.trim().length > 0 || textInput.value.trim().length > 0
-  return hasContent && status.value === 'started' && !rateLimitError.value
+  return hasContent && status.value === 'started' && !isListening.value && !isTranscribing.value && !rateLimitError.value
 })
 
 const canSendReady = computed(() => hasReceivedGreeting.value && status.value === 'connected' && !currentQuestion.value)
+
+const greetingText = computed(() => {
+  return messages.value.find((message) => message.type === 'system' && message.text.trim().length > 0)?.text ?? ''
+})
 
 const showReconnectModal = computed(() => status.value === 'error' && reconnectAttempts.value >= 3)
 
@@ -271,6 +304,11 @@ const timerLabel = computed(() => {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 })
 
+const voiceErrorText = computed(() => {
+  if (!voiceError.value) return ''
+  return isTranscriptionTimeout.value ? t('interview.transcriptionTimeout') : t('interview.transcriptionFailed')
+})
+
 function speakText(text: string) {
   cancelSpeech()
   if (!isMuted.value) {
@@ -279,8 +317,21 @@ function speakText(text: string) {
 }
 
 function submitAnswer() {
-  const answer = textInput.value.trim() || transcript.value.trim()
-  if (!answer) return
+  answerValidationError.value = ''
+  if (status.value === 'connected' || status.value === 'ready' || !currentQuestion.value) {
+    answerValidationError.value = t('validation.waitForQuestion')
+    return
+  }
+  if (isListening.value || isTranscribing.value) {
+    answerValidationError.value = t('validation.waitForRecognition')
+    return
+  }
+
+  const answer = transcript.value.trim() || textInput.value.trim()
+  if (!answer) {
+    answerValidationError.value = t('validation.answerRequired')
+    return
+  }
 
   stopListening()
   resetTranscript()
@@ -290,6 +341,7 @@ function submitAnswer() {
 
 function startFirstQuestion() {
   textInput.value = ''
+  answerValidationError.value = ''
   resetTranscript()
   sendReady()
 }
@@ -300,6 +352,14 @@ function toggleListening() {
     return
   }
 
+  cancelSpeech()
+  answerValidationError.value = ''
+  startListening()
+}
+
+function rerecordAnswer() {
+  resetTranscript()
+  textInput.value = ''
   cancelSpeech()
   startListening()
 }
@@ -366,6 +426,15 @@ watch(
     }
   },
 )
+
+watch(greetingText, (text) => {
+  if (!text || hasSpokenGreeting.value || !autoSpeakQuestions.value) {
+    return
+  }
+
+  hasSpokenGreeting.value = true
+  speakText(text)
+})
 
 onMounted(async () => {
   const token = await getAccessToken()

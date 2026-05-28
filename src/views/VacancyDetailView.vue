@@ -36,13 +36,34 @@
                 <div>
                   <p class="text-sm font-medium text-muted-foreground">{{ t('common.stack') }}</p>
                   <div class="mt-2 flex flex-wrap gap-2">
-                    <span v-for="item in vacancy.technologyKeys" :key="item" class="rounded-full border border-border px-3 py-1 text-xs font-semibold">{{ item }}</span>
+                    <span v-for="item in vacancy.technologyKeys" :key="item" class="rounded-full border border-border px-3 py-1 text-xs font-semibold">{{ technologyLabel(item, technologies) }}</span>
                   </div>
                 </div>
               </div>
               <form class="mt-6 space-y-4 rounded-[1.5rem] border border-border/60 p-5" @submit.prevent="submitInterviewSettings">
                 <h3 class="font-semibold text-foreground">{{ t('vacancyInterviewSettings.editTitle') }}</h3>
                 <div class="grid gap-4">
+                  <label class="space-y-2">
+                    <span class="block text-sm font-semibold text-foreground">{{ t('vacancyBuilder.stack') }}</span>
+                    <div class="space-y-4">
+                      <div v-for="group in technologyGroups" :key="group.groupKey">
+                        <p class="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{{ group.groupName }}</p>
+                        <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                          <button
+                            v-for="technology in group.items"
+                            :key="technology.key"
+                            type="button"
+                            class="rounded-full border px-3 py-2 text-xs font-semibold transition"
+                            :class="settingsForm.technologyKeys.includes(technology.key) ? 'border-primary/30 bg-primary/10 text-primary' : 'border-border bg-muted/40 text-muted-foreground hover:border-primary/30'"
+                            @click="toggleSettingsTechnology(technology.key)"
+                          >
+                            {{ technology.displayName }}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <p v-if="technologiesError" class="text-xs text-warning">{{ technologiesError }}</p>
+                  </label>
                   <label class="space-y-2">
                     <span class="block text-sm font-semibold text-foreground">{{ t('vacancyInterviewSettings.minPrimaryQuestions') }}</span>
                     <input v-model.number="settingsForm.minPrimaryQuestions" min="1" max="30" type="number" class="h-11 w-full rounded-full border border-border bg-input px-4 text-sm outline-none focus:border-primary" />
@@ -191,9 +212,11 @@ import AppFooter from '@/components/AppFooter.vue'
 import AppHeader from '@/components/AppHeader.vue'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseCard from '@/components/BaseCard.vue'
+import { getGroupedTechnologies } from '@/api/interview'
 import { closeVacancy, createVacancyQuestion, deleteVacancyQuestion, draftVacancy, getVacancy, getVacancyApplications, getVacancyQuestions, publishVacancy, updateVacancy, updateVacancyQuestion } from '@/api/organization'
 import { useI18n } from '@/i18n'
-import type { VacancyApplicationSummary, VacancyQuestionResponse, VacancyResponse } from '@/types/api'
+import type { TechnologyGroupResponse, TechnologyResponse, VacancyApplicationSummary, VacancyQuestionResponse, VacancyResponse } from '@/types/api'
+import { FALLBACK_TECHNOLOGY_GROUPS, flattenTechnologyGroups, technologyLabel } from '@/utils/technologies'
 import { employmentTypeLabel, vacancyLevelLabel, vacancyStatusLabel, workFormatLabel } from '@/utils/vacancy-labels'
 
 const route = useRoute()
@@ -211,8 +234,11 @@ const questionError = ref('')
 const settingsError = ref('')
 const settingsMessage = ref('')
 const editingQuestionId = ref('')
+const technologyGroups = ref<TechnologyGroupResponse[]>(FALLBACK_TECHNOLOGY_GROUPS)
+const technologies = computed<TechnologyResponse[]>(() => flattenTechnologyGroups(technologyGroups.value))
+const technologiesError = ref('')
 const questionForm = reactive({ questionText: '', expectedAnswer: '', evaluationRubric: '', topic: '', required: true, displayOrder: 1 })
-const settingsForm = reactive({ minPrimaryQuestions: 5, maxPrimaryQuestions: 8, maxFollowUpsPerPrimary: 1 })
+const settingsForm = reactive({ minPrimaryQuestions: 5, maxPrimaryQuestions: 8, maxFollowUpsPerPrimary: 1, technologyKeys: [] as string[] })
 const completedApplicationsCount = computed(() => applications.value.filter((application) => application.status === 'INTERVIEW_COMPLETED').length)
 const inProgressApplicationsCount = computed(() => applications.value.filter((application) => application.status === 'INTERVIEW_CREATED' || application.status === 'INTERVIEW_IN_PROGRESS').length)
 const applicationsAverageScore = computed(() => {
@@ -237,6 +263,7 @@ function syncSettingsForm() {
   settingsForm.minPrimaryQuestions = vacancy.value.minPrimaryQuestions
   settingsForm.maxPrimaryQuestions = vacancy.value.maxPrimaryQuestions
   settingsForm.maxFollowUpsPerPrimary = vacancy.value.maxFollowUpsPerPrimary
+  settingsForm.technologyKeys = [...vacancy.value.technologyKeys]
 }
 
 async function loadQuestions() {
@@ -285,6 +312,7 @@ async function submitInterviewSettings() {
       minPrimaryQuestions: settingsForm.minPrimaryQuestions,
       maxPrimaryQuestions: settingsForm.maxPrimaryQuestions,
       maxFollowUpsPerPrimary: settingsForm.maxFollowUpsPerPrimary,
+      technologyKeys: settingsForm.technologyKeys,
     })
     syncSettingsForm()
     settingsMessage.value = t('vacancyInterviewSettings.saved')
@@ -293,6 +321,12 @@ async function submitInterviewSettings() {
   } finally {
     isSavingSettings.value = false
   }
+}
+
+function toggleSettingsTechnology(technologyKey: string) {
+  const idx = settingsForm.technologyKeys.indexOf(technologyKey)
+  if (idx === -1) settingsForm.technologyKeys.push(technologyKey)
+  else settingsForm.technologyKeys.splice(idx, 1)
 }
 
 function resetQuestionForm() {
@@ -361,5 +395,17 @@ const InfoItem = defineComponent({
   },
 })
 
-onMounted(loadVacancy)
+onMounted(async () => {
+  await Promise.all([loadVacancy(), loadTechnologies()])
+})
+
+async function loadTechnologies() {
+  try {
+    const response = await getGroupedTechnologies()
+    technologyGroups.value = response.length ? response : FALLBACK_TECHNOLOGY_GROUPS
+  } catch {
+    technologyGroups.value = FALLBACK_TECHNOLOGY_GROUPS
+    technologiesError.value = t('technologies.loadFailed')
+  }
+}
 </script>

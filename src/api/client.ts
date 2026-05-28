@@ -71,28 +71,34 @@ async function redirectBlockedUserOnForbidden(status: number) {
 
 const userApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api/v1'
 const organizationApiBaseUrl = import.meta.env.VITE_ORGANIZATION_API_BASE_URL ?? 'http://localhost:8082/api/v1'
+const interviewApiBaseUrl = import.meta.env.VITE_INTERVIEW_API_BASE_URL ?? 'http://localhost:8081/api/v1'
 const userApiClient = createApiClient(userApiBaseUrl, true)
 const publicUserApiClient = createApiClient(userApiBaseUrl, false)
-const interviewApiClient = createApiClient(import.meta.env.VITE_INTERVIEW_API_BASE_URL ?? 'http://localhost:8081/api/v1', true)
+const interviewApiClient = createApiClient(interviewApiBaseUrl, true)
+const publicInterviewApiClient = createApiClient(interviewApiBaseUrl, false)
 const organizationApiClient = createApiClient(organizationApiBaseUrl, true)
 const publicOrganizationApiClient = createApiClient(organizationApiBaseUrl, false)
 
-export async function apiRequest<T>(path: string, options?: FetchOptions<'json'>) {
-  return userApiClient<T>(path, options)
+export async function apiRequest<T>(path: string, options?: FetchOptions) {
+  return userApiClient<T>(path, options as any)
 }
 
-export async function publicApiRequest<T>(path: string, options?: FetchOptions<'json'>) {
-  return publicUserApiClient<T>(path, options)
+export async function publicApiRequest<T>(path: string, options?: FetchOptions) {
+  return publicUserApiClient<T>(path, options as any)
 }
 
-export async function interviewRequest<T>(path: string, options?: FetchOptions<'json'>) {
-  return interviewApiClient<T>(path, options)
+export async function interviewRequest<T>(path: string, options?: FetchOptions) {
+  return interviewApiClient<T>(path, options as any)
 }
 
-export async function organizationRequest<T>(path: string, options?: FetchOptions<'json'>) {
-  return organizationApiClient<T>(path, options)
+export async function publicInterviewRequest<T>(path: string, options?: FetchOptions) {
+  return publicInterviewApiClient<T>(path, options as any)
 }
 
-export async function publicOrganizationRequest<T>(path: string, options?: FetchOptions<'json'>) {
-  return publicOrganizationApiClient<T>(path, options)
+export async function organizationRequest<T>(path: string, options?: FetchOptions) {
+  return organizationApiClient<T>(path, options as any)
+}
+
+export async function publicOrganizationRequest<T>(path: string, options?: FetchOptions) {
+  return publicOrganizationApiClient<T>(path, options as any)
 }

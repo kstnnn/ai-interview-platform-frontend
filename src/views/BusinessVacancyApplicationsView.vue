@@ -14,6 +14,12 @@
             <p class="text-sm font-semibold uppercase tracking-[0.2em] text-primary">{{ t('applications.pageEyebrow') }}</p>
             <h1 class="mt-3 text-3xl font-bold text-foreground">{{ vacancy?.title || t('applications.pageTitle') }}</h1>
             <p class="mt-2 max-w-2xl text-muted-foreground">{{ t('applications.pageSubtitle') }}</p>
+            <div class="mt-4 flex flex-wrap items-center gap-3">
+              <BaseButton variant="outline" :disabled="isExporting" @click="exportApplicationsCsv">
+                {{ isExporting ? t('applications.exportingCsv') : t('applications.exportCsv') }}
+              </BaseButton>
+              <p v-if="exportError" class="text-sm text-destructive">{{ exportError }}</p>
+            </div>
           </div>
           <div class="grid grid-cols-3 gap-3 text-center">
             <BaseCard class="p-4">
@@ -121,6 +127,7 @@ import AppFooter from '@/components/AppFooter.vue'
 import AppHeader from '@/components/AppHeader.vue'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseCard from '@/components/BaseCard.vue'
+import { downloadAuthenticatedFile, organizationApiBaseUrl } from '@/api/download'
 import { getVacancy, getVacancyApplications } from '@/api/organization'
 import { useI18n } from '@/i18n'
 import type { ApplicationRecommendation, CandidateContacts, VacancyApplicationSummary, VacancyResponse } from '@/types/api'
@@ -133,7 +140,9 @@ const vacancyId = String(route.params.vacancyId ?? '')
 const vacancy = ref<VacancyResponse | null>(null)
 const applications = ref<VacancyApplicationSummary[]>([])
 const isLoading = ref(true)
+const isExporting = ref(false)
 const error = ref('')
+const exportError = ref('')
 const search = ref('')
 const statusFilter = ref('all')
 const recommendationFilter = ref('all')
@@ -222,6 +231,18 @@ function applicationRoute(application: VacancyApplicationSummary) {
     return `/business/vacancies/${application.vacancyId}/applications/${application.applicationId}/report`
   }
   return application.interviewSessionId ? `/results/${application.interviewSessionId}` : null
+}
+
+async function exportApplicationsCsv() {
+  isExporting.value = true
+  exportError.value = ''
+  try {
+    await downloadAuthenticatedFile(`${organizationApiBaseUrl}/vacancies/${encodeURIComponent(vacancyId)}/applications/export`, `vacancy-applications-${vacancyId}.csv`)
+  } catch (err) {
+    exportError.value = err instanceof Error ? err.message : t('common.downloadFailed')
+  } finally {
+    isExporting.value = false
+  }
 }
 
 function contactLinks(application: VacancyApplicationSummary) {

@@ -91,6 +91,7 @@
               <RouterLink v-if="applicationRoute(application)" :to="applicationRoute(application)!">
                 <BaseButton size="sm" variant="outline">{{ application.status === 'INTERVIEW_COMPLETED' ? t('applications.openReport') : t('applications.openStatus') }}</BaseButton>
               </RouterLink>
+              <BaseButton v-else size="sm" variant="outline" disabled>{{ t('applications.reportNotReady') }}</BaseButton>
             </div>
 
             <div class="mt-4 flex flex-wrap gap-2 text-xs font-semibold">
@@ -175,7 +176,6 @@ const filteredApplications = computed(() => {
       const matchesRecommendation = recommendationFilter.value === 'all' || application.recommendation === recommendationFilter.value
       const searchable = [
         application.candidateName,
-        application.candidateUserId,
         application.coverLetter,
         ...Object.values(application.candidateContacts ?? {}),
       ]
@@ -202,7 +202,7 @@ function dateValue(value?: string | null) {
 }
 
 function candidateLabel(application: VacancyApplicationSummary) {
-  return application.candidateName || application.candidateContacts?.email || application.candidateUserId
+  return application.candidateName || application.candidateContacts?.email || t('applications.candidate')
 }
 
 function applicationStatusLabel(status: string) {
@@ -228,9 +228,9 @@ function recommendationClass(recommendation: ApplicationRecommendation | null | 
 
 function applicationRoute(application: VacancyApplicationSummary) {
   if (application.status === 'INTERVIEW_COMPLETED') {
-    return `/business/vacancies/${application.vacancyId}/applications/${application.applicationId}/report`
+    return `/business/vacancies/${vacancyId}/applications/${application.applicationId}/report`
   }
-  return application.interviewSessionId ? `/results/${application.interviewSessionId}` : null
+  return null
 }
 
 async function exportApplicationsCsv() {

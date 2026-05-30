@@ -107,7 +107,7 @@ export function applyToVacancy(vacancyId: string, data: VacancyApplicationReques
 }
 
 export function getMyApplications() {
-  return organizationRequest<VacancyApplicationSummary[]>('/applications/my')
+  return organizationRequest<VacancyApplicationResponse[]>('/applications/my')
 }
 
 export function getApplication(applicationId: string) {

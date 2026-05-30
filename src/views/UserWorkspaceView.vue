@@ -173,11 +173,11 @@ import BaseCard from '@/components/BaseCard.vue'
 import { getMyInterviews, getUserLearningRoadmap } from '@/api/interview'
 import { getMyApplications } from '@/api/organization'
 import { useI18n } from '@/i18n'
-import type { InterviewSessionStatus, InterviewSessionSummary, LearningRoadmapResponse, VacancyApplicationSummary } from '@/types/api'
+import type { InterviewSessionStatus, InterviewSessionSummary, LearningRoadmapResponse, VacancyApplicationResponse } from '@/types/api'
 
 const { locale, t } = useI18n()
 const interviewSessions = ref<InterviewSessionSummary[]>([])
-const applications = ref<VacancyApplicationSummary[]>([])
+const applications = ref<VacancyApplicationResponse[]>([])
 const roadmap = ref<LearningRoadmapResponse | null>(null)
 const isLoadingSessions = ref(true)
 const isLoadingApplications = ref(true)

@@ -354,11 +354,22 @@ export type CandidateContacts = {
 }
 
 export type ApplicationCandidate = {
-  userId: string
   firstName: string | null
   lastName: string | null
-  email: string | null
   contacts: CandidateContacts
+}
+
+export type EmployerVacancyApplicationResponse = {
+  applicationId: string
+  candidateName: string | null
+  candidateContacts: CandidateContacts
+  status: ApplicationStatus
+  sessionConfidence: number | null
+  recommendation: ApplicationRecommendation | null
+  coverLetter: string | null
+  createdAt: string
+  completedAt: string | null
+  updatedAt: string
 }
 
 export type VacancyApplicationResponse = {
@@ -377,7 +388,7 @@ export type VacancyApplicationResponse = {
   completedAt?: string | null
 }
 
-export type VacancyApplicationSummary = VacancyApplicationResponse
+export type VacancyApplicationSummary = EmployerVacancyApplicationResponse
 
 export type EmployerApplicationReport = {
   applicationId: string

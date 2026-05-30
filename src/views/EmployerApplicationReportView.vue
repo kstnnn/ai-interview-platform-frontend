@@ -22,7 +22,6 @@
             <BaseCard class="p-8">
               <p class="text-sm font-semibold uppercase tracking-[0.2em] text-primary">{{ t('employerReport.eyebrow') }}</p>
               <h1 class="mt-3 text-3xl font-bold text-foreground">{{ candidateName }}</h1>
-              <p v-if="report.candidate.email" class="mt-2 text-muted-foreground">{{ report.candidate.email }}</p>
               <div class="mt-4 flex flex-wrap gap-2 text-xs">
                 <ContactLink v-for="contact in contactLinks(report.candidate.contacts)" :key="contact.label + contact.value" :contact="contact" />
                 <span v-if="contactLinks(report.candidate.contacts).length === 0" class="text-sm text-muted-foreground">{{ t('applications.noContacts') }}</span>
@@ -182,7 +181,7 @@ const downloadError = ref('')
 const candidateName = computed(() => {
   const candidate = report.value?.candidate
   if (!candidate) return '—'
-  return [candidate.firstName, candidate.lastName].filter(Boolean).join(' ') || candidate.email || candidate.userId
+  return [candidate.firstName, candidate.lastName].filter(Boolean).join(' ') || candidate.contacts.email || t('applications.candidate')
 })
 
 onMounted(async () => {

@@ -33,6 +33,10 @@
                 <component :is="autoSpeakQuestions ? Volume2 : VolumeX" class="h-4 w-4" />
                 {{ autoSpeakQuestions ? t('interview.autoSpeakOn') : t('interview.autoSpeakOff') }}
               </BaseButton>
+              <BaseButton variant="outline" size="sm" @click="toggleViewMode">
+                <Bot class="h-4 w-4" />
+                {{ viewMode === 'chat' ? t('interview.avatarView') : t('interview.chatView') }}
+              </BaseButton>
               <BaseButton variant="outline" size="sm" @click="toggleMute">
                 <component :is="isMuted ? VolumeX : Volume2" class="h-4 w-4" />
                 {{ isMuted ? t('interview.unmute') : t('interview.mute') }}
@@ -45,7 +49,8 @@
           </div>
         </div>
 
-        <div ref="messagesContainerRef" class="min-h-0 flex-1 space-y-4 overflow-y-auto p-6">
+        <div ref="messagesContainerRef" class="min-h-0 flex-1 overflow-y-auto p-6" :class="viewMode === 'chat' ? 'space-y-4' : ''">
+          <template v-if="viewMode === 'chat'">
           <div v-for="message in displayMessages" :key="message.id" class="flex gap-3"
             :class="message.type === 'answer' ? 'justify-end' : 'justify-start'">
             <div v-if="message.type !== 'answer'"
@@ -79,6 +84,41 @@
             <div
               class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-organic bg-accent text-accent-foreground shadow-soft">
               <User class="h-5 w-5" />
+            </div>
+          </div>
+          </template>
+
+          <div v-else class="flex h-full min-h-[360px] flex-col justify-between gap-6">
+            <div class="flex flex-1 flex-col items-center justify-center text-center">
+              <div class="relative">
+                <div class="absolute inset-[-1.25rem] rounded-full bg-primary/10 blur-2xl" :class="isAvatarSpeaking || isSpeaking ? 'animate-pulse' : ''"></div>
+                <div class="relative flex h-48 w-48 items-center justify-center rounded-full border border-primary/20 bg-gradient-to-br from-primary/20 via-secondary to-background shadow-soft transition-transform duration-500" :style="avatarStyle">
+                  <div class="absolute top-12 flex w-24 justify-between">
+                    <div class="h-4 w-4 rounded-full bg-foreground transition-transform duration-150" :class="blink ? 'scale-y-[0.12]' : ''"></div>
+                    <div class="h-4 w-4 rounded-full bg-foreground transition-transform duration-150" :class="blink ? 'scale-y-[0.12]' : ''"></div>
+                  </div>
+                  <div class="absolute top-20 h-2 w-5 rounded-full bg-primary/40"></div>
+                  <div class="absolute bottom-14 rounded-full bg-primary transition-all duration-75" :style="mouthStyle"></div>
+                  <Bot class="absolute bottom-4 right-8 h-6 w-6 text-primary" />
+                </div>
+              </div>
+
+              <p class="mt-6 text-sm font-semibold uppercase tracking-[0.2em] text-primary">{{ t('interview.aiInterviewer') }}</p>
+              <h3 class="mt-2 text-2xl font-bold text-foreground">{{ avatarStateLabel }}</h3>
+              <p class="mt-4 max-w-2xl text-lg leading-relaxed text-foreground">
+                {{ currentQuestion?.text || greetingText || t('interview.statePreparing') }}
+              </p>
+            </div>
+
+            <div class="grid gap-4 md:grid-cols-2">
+              <div class="rounded-[1.5rem] border border-border/60 bg-background/80 p-4">
+                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{{ t('interview.lastQuestion') }}</p>
+                <p class="mt-2 line-clamp-3 text-sm leading-relaxed text-foreground">{{ lastQuestionMessage?.text || t('interview.noQuestionYet') }}</p>
+              </div>
+              <div class="rounded-[1.5rem] border border-border/60 bg-background/80 p-4">
+                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{{ t('interview.lastAnswer') }}</p>
+                <p class="mt-2 line-clamp-3 text-sm leading-relaxed text-foreground">{{ lastAnswerMessage?.text || t('interview.noAnswerYet') }}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -191,6 +231,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { AlertCircle, AlertTriangle, Bot, CircleCheck, Info, Mic, MicOff, Play, Send, User, Volume2, VolumeX } from 'lucide-vue-next'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseCard from '@/components/BaseCard.vue'
+import { useAudioAvatar } from '@/composables/useAudioAvatar'
 import { useVoiceInterview } from '@/composables/useVoiceInterview'
 import { useInterviewWebSocket } from '@/composables/useInterviewWebSocket'
 import { useAppSession } from '@/composables/useAppSession'
@@ -218,6 +259,7 @@ const interviewLanguage = computed(() => {
   return locale.value === 'ru' ? 'Russian' : 'English'
 })
 const speechLocale = computed(() => (interviewLanguage.value === 'Russian' ? 'ru-RU' : 'en-US'))
+const viewMode = ref<'chat' | 'avatar'>('chat')
 
 const {
   isConnected,
@@ -242,10 +284,19 @@ const {
 } = useInterviewWebSocket()
 
 const {
+  isAvatarSpeaking,
+  blink,
+  avatarStyle,
+  mouthStyle,
+  attachAudio,
+} = useAudioAvatar()
+
+const {
   transcript,
   transcriptionLanguage,
   isListening,
   isTranscribing,
+  isSpeaking,
   error: voiceError,
   isTranscriptionTimeout,
   canRetryTranscription,
@@ -256,7 +307,7 @@ const {
   retryTranscription,
   speak,
   cancelSpeech,
-} = useVoiceInterview(sessionId, speechLocale)
+} = useVoiceInterview(sessionId, speechLocale, { onAudioElement: attachAudio })
 
 const messagesContainerRef = ref<HTMLElement | null>(null)
 const isMuted = ref(false)
@@ -288,6 +339,19 @@ const canSendReady = computed(() => hasReceivedGreeting.value && status.value ==
 
 const greetingText = computed(() => {
   return messages.value.find((message) => message.type === 'system' && message.text.trim().length > 0)?.text ?? ''
+})
+
+const lastQuestionMessage = computed(() => displayMessages.value.filter((message) => message.type === 'question').at(-1))
+
+const lastAnswerMessage = computed(() => displayMessages.value.filter((message) => message.type === 'answer').at(-1))
+
+const avatarStateLabel = computed(() => {
+  if (isSpeaking.value || isAvatarSpeaking.value) return t('interview.stateSpeaking')
+  if (isListening.value) return t('interview.stateListening')
+  if (isTranscribing.value) return t('interview.stateRecognizing')
+  if (status.value === 'evaluating') return t('interview.stateThinking')
+  if (currentQuestion.value) return t('interview.stateWaiting')
+  return t('interview.statePreparing')
 })
 
 const showReconnectModal = computed(() => status.value === 'error' && reconnectAttempts.value >= 3)
@@ -373,6 +437,10 @@ function toggleMute() {
 
 function toggleAutoSpeak() {
   autoSpeakQuestions.value = !autoSpeakQuestions.value
+}
+
+function toggleViewMode() {
+  viewMode.value = viewMode.value === 'chat' ? 'avatar' : 'chat'
 }
 
 function leaveInterview() {

@@ -3,7 +3,11 @@ import { synthesizeInterviewSpeech, transcribeInterviewAudio } from '@/api/inter
 
 const TRANSCRIPTION_TIMEOUT_MS = 120_000
 
-export function useVoiceInterview(sessionId: MaybeRefOrGetter<string>, speechLocale: MaybeRefOrGetter<string> = 'en-US') {
+type VoiceInterviewOptions = {
+  onAudioElement?: (audio: HTMLAudioElement) => void | Promise<void>
+}
+
+export function useVoiceInterview(sessionId: MaybeRefOrGetter<string>, speechLocale: MaybeRefOrGetter<string> = 'en-US', options: VoiceInterviewOptions = {}) {
   const transcript = ref('')
   const interimTranscript = ref('')
   const transcriptionLanguage = ref<string | null>(null)
@@ -200,6 +204,7 @@ export function useVoiceInterview(sessionId: MaybeRefOrGetter<string>, speechLoc
       const audio = await synthesizeInterviewSpeech({ text, speaker: 'baya' })
       const objectUrl = URL.createObjectURL(audio)
       currentAudio = new Audio(objectUrl)
+      void options.onAudioElement?.(currentAudio)
       currentAudio.onended = () => {
         URL.revokeObjectURL(objectUrl)
         isSpeaking.value = false
